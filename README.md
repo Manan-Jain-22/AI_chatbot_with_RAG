@@ -7,7 +7,8 @@ RAG chatbot built with LangChain, FAISS, OpenAI embeddings, and a LangGraph mult
 - Load `.pdf`, `.txt`, and `.md` files from `data/`
 - Split 100+ documents into retrieval-friendly chunks
 - Store semantic embeddings in a local FAISS index
-- Use a LangGraph workflow for query rewriting, optional tool execution, retrieval, and response generation
+- Use a LangGraph workflow for query rewriting, MCP tool calls, retrieval, and response generation
+- Review generated answers before exporting approved responses
 - Run through Streamlit or a terminal script
 
 ## Setup
@@ -50,6 +51,16 @@ You can also ask a question from the terminal:
 ```bash
 python -m src.rag_chain
 ```
+
+## MCP Tool Server
+
+The project includes a local MCP server with tools for query preparation, final response formatting, and approved answer export:
+
+```bash
+python -m src.mcp_server
+```
+
+LangGraph loads these tools through `langchain-mcp-adapters` when available, with same-schema local fallbacks for restricted environments.
 
 ## Evaluation
 
