@@ -3,14 +3,14 @@ from __future__ import annotations
 from typing import Annotated, List, Optional, TypedDict
 
 from langchain_core.documents import Document
-from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
-from langchain_core.tools import BaseTool, tool
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
-from langgraph.prebuilt import ToolNode
 
 from src.config import CHAT_MODEL, DEFAULT_TOP_K, MAX_REWRITE_ATTEMPTS, validate_openai_key
+from src.mcp_tools import find_tool, get_agent_tools
 from src.vector_store import get_retriever
 
 
@@ -56,12 +56,6 @@ def collect_sources(documents: List[Document]) -> List[str]:
     return sources
 
 
-@tool
-def normalize_retrieval_query(question: str) -> str:
-    """Normalize a user question into a concise semantic-search query."""
-    return " ".join(question.replace("\n", " ").split())
-
-
 def build_rag_graph(
     top_k: int = DEFAULT_TOP_K,
     tools: Optional[List[BaseTool]] = None,
@@ -75,9 +69,9 @@ def build_rag_graph(
     """
     llm = get_chat_model()
     retriever = get_retriever(top_k=top_k)
-    available_tools = tools or [normalize_retrieval_query]
-    tool_node = ToolNode(available_tools)
-    tool_llm = llm.bind_tools(available_tools)
+    available_tools = tools or get_agent_tools()
+    query_tool = find_tool(available_tools, "prepare_retrieval_query")
+    response_tool = find_tool(available_tools, "prepare_final_response")
 
     def rewrite_query(state: RAGState) -> dict:
         prompt = [
@@ -97,36 +91,19 @@ def build_rag_graph(
             "messages": [response],
         }
 
-    def call_tools(state: RAGState) -> dict:
-        response = tool_llm.invoke(
-            [
-                SystemMessage(
-                    content=(
-                        "Use a tool only if it improves the retrieval query. "
-                        "Otherwise answer with the query text."
-                    )
-                ),
-                HumanMessage(content=state["rewritten_question"] or state["question"]),
-            ]
+    def prepare_query_with_mcp(state: RAGState) -> dict:
+        prepared_query = query_tool.invoke(
+            {
+                "question": state["question"],
+                "rewritten_question": state["rewritten_question"],
+            }
         )
-        return {"messages": [response]}
+        return {"rewritten_question": str(prepared_query)}
 
     def retrieve(state: RAGState) -> dict:
         query = state["rewritten_question"] or state["question"]
         documents = retriever.invoke(query)
         return {"documents": documents}
-
-    def apply_tool_output(state: RAGState) -> dict:
-        tool_messages = [
-            message for message in state.get("messages", []) if isinstance(message, ToolMessage)
-        ]
-        if not tool_messages:
-            return {}
-
-        normalized_query = str(tool_messages[-1].content).strip()
-        if not normalized_query:
-            return {}
-        return {"rewritten_question": normalized_query}
 
     def generate_answer(state: RAGState) -> dict:
         context = format_documents(state["documents"])
@@ -149,31 +126,28 @@ def build_rag_graph(
         response = llm.invoke(prompt)
         return {"answer": response.content, "messages": [response]}
 
-    def should_continue_after_tools(state: RAGState) -> str:
-        last_message = state["messages"][-1] if state.get("messages") else None
-        if getattr(last_message, "tool_calls", None):
-            return "tools"
-        return "retrieve"
+    def format_answer_with_mcp(state: RAGState) -> dict:
+        formatted_answer = response_tool.invoke(
+            {
+                "answer": state["answer"],
+                "sources": ", ".join(collect_sources(state["documents"])),
+            }
+        )
+        return {"answer": str(formatted_answer)}
 
     graph = StateGraph(RAGState)
     graph.add_node("rewrite_query", rewrite_query)
-    graph.add_node("call_tools", call_tools)
-    graph.add_node("tools", tool_node)
-    graph.add_node("apply_tool_output", apply_tool_output)
+    graph.add_node("prepare_query_with_mcp", prepare_query_with_mcp)
     graph.add_node("retrieve", retrieve)
     graph.add_node("generate_answer", generate_answer)
+    graph.add_node("format_answer_with_mcp", format_answer_with_mcp)
 
     graph.set_entry_point("rewrite_query")
-    graph.add_edge("rewrite_query", "call_tools")
-    graph.add_conditional_edges(
-        "call_tools",
-        should_continue_after_tools,
-        {"tools": "tools", "retrieve": "retrieve"},
-    )
-    graph.add_edge("tools", "apply_tool_output")
-    graph.add_edge("apply_tool_output", "retrieve")
+    graph.add_edge("rewrite_query", "prepare_query_with_mcp")
+    graph.add_edge("prepare_query_with_mcp", "retrieve")
     graph.add_edge("retrieve", "generate_answer")
-    graph.add_edge("generate_answer", END)
+    graph.add_edge("generate_answer", "format_answer_with_mcp")
+    graph.add_edge("format_answer_with_mcp", END)
     return graph.compile()
 
 

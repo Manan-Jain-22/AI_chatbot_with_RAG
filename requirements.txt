@@ -4,6 +4,8 @@ langchain
 langchain-community
 langchain-openai
 langgraph
+langchain-mcp-adapters
+mcp
 faiss-cpu
 pypdf
 tiktoken
