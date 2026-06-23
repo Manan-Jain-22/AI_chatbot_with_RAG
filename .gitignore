@@ -3,6 +3,7 @@
 __pycache__/
 *.pyc
 index/
+exports/
 data/*
 !data/.gitkeep
 .DS_Store
