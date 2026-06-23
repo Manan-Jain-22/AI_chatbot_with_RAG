@@ -5,6 +5,7 @@ from typing import Optional
 from mcp.server.fastmcp import FastMCP
 
 from src.config import BASE_DIR
+from src.whatsapp_client import send_whatsapp_text_message_impl
 
 
 mcp = FastMCP(
@@ -90,6 +91,16 @@ def export_answer_to_markdown(
 ) -> str:
     """Export a human-approved RAG answer as a Markdown document."""
     return export_answer_to_markdown_impl(question, answer, sources, output_dir)
+
+
+@mcp.tool()
+def send_whatsapp_text_message(
+    recipient_phone_number: str,
+    message: str,
+    preview_url: bool = False,
+) -> dict:
+    """Send a text message through Meta WhatsApp Cloud API."""
+    return send_whatsapp_text_message_impl(recipient_phone_number, message, preview_url)
 
 
 if __name__ == "__main__":
