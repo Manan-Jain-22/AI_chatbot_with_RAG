@@ -9,6 +9,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.config import DATA_DIR, DEFAULT_TOP_K, FAISS_INDEX_DIR
 from src.document_loader import SUPPORTED_EXTENSIONS
+from src.mcp_tools import export_answer_to_markdown
 from src.rag_chain import answer_question
 from src.vector_store import build_faiss_index, index_exists
 
@@ -65,6 +66,8 @@ with st.sidebar:
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "pending_export" not in st.session_state:
+    st.session_state.pending_export = None
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
@@ -96,5 +99,35 @@ if question:
                             "sources": result["sources"],
                         }
                     )
+                    st.session_state.pending_export = {
+                        "question": question,
+                        "answer": result["answer"],
+                        "sources": result["sources"],
+                    }
                 except Exception as exc:
                     st.error(str(exc))
+
+if st.session_state.pending_export:
+    st.divider()
+    st.subheader("Review Answer")
+    st.markdown(st.session_state.pending_export["answer"])
+    st.caption("Sources: " + ", ".join(st.session_state.pending_export["sources"]))
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Approve and Export"):
+            try:
+                exported_path = export_answer_to_markdown.invoke(
+                    {
+                        "question": st.session_state.pending_export["question"],
+                        "answer": st.session_state.pending_export["answer"],
+                        "sources": ", ".join(st.session_state.pending_export["sources"]),
+                    }
+                )
+                st.success(f"Exported approved answer to {exported_path}")
+                st.session_state.pending_export = None
+            except Exception as exc:
+                st.error(str(exc))
+    with col2:
+        if st.button("Keep Editing / Ask Follow-up"):
+            st.info("Ask a follow-up question or request changes in the chat box.")
