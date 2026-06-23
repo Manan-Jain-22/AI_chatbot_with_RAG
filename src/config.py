@@ -30,6 +30,13 @@ DEFAULT_TOP_K = int(os.getenv("DEFAULT_TOP_K", "4"))
 MAX_REWRITE_ATTEMPTS = int(os.getenv("MAX_REWRITE_ATTEMPTS", "1"))
 
 
+# WhatsApp Cloud API settings
+WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN")
+WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
+WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "rag-chatbot-verify-token")
+WHATSAPP_API_VERSION = os.getenv("WHATSAPP_API_VERSION", "v20.0")
+
+
 def validate_openai_key() -> None:
     """
     Checks whether the OpenAI API key exists.
@@ -38,4 +45,24 @@ def validate_openai_key() -> None:
     if not OPENAI_API_KEY:
         raise ValueError(
             "OPENAI_API_KEY is missing. Add it to your .env file before running the AI pipeline."
+        )
+
+
+def validate_whatsapp_config() -> None:
+    """
+    Checks whether WhatsApp Cloud API credentials exist.
+    """
+    missing = [
+        name
+        for name, value in {
+            "WHATSAPP_ACCESS_TOKEN": WHATSAPP_ACCESS_TOKEN,
+            "WHATSAPP_PHONE_NUMBER_ID": WHATSAPP_PHONE_NUMBER_ID,
+        }.items()
+        if not value
+    ]
+    if missing:
+        raise ValueError(
+            "Missing WhatsApp configuration: "
+            + ", ".join(missing)
+            + ". Add these values to your .env file."
         )

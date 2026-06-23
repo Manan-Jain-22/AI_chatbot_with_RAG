@@ -11,6 +11,7 @@ from src.mcp_server import (
     prepare_final_response_impl,
     prepare_retrieval_query_impl,
 )
+from src.whatsapp_client import send_whatsapp_text_message_impl
 
 
 @tool
@@ -36,6 +37,16 @@ def export_answer_to_markdown(
     return export_answer_to_markdown_impl(question, answer, sources, output_dir)
 
 
+@tool
+def send_whatsapp_text_message(
+    recipient_phone_number: str,
+    message: str,
+    preview_url: bool = False,
+) -> dict:
+    """Send a text message through Meta WhatsApp Cloud API."""
+    return send_whatsapp_text_message_impl(recipient_phone_number, message, preview_url)
+
+
 def get_local_mcp_compatible_tools() -> List[BaseTool]:
     """
     Return LangChain tools with the same schemas as the MCP server tools.
@@ -43,7 +54,12 @@ def get_local_mcp_compatible_tools() -> List[BaseTool]:
     These keep the app runnable in environments where spawning a stdio MCP
     server is not available, while the real MCP server remains in src.mcp_server.
     """
-    return [prepare_retrieval_query, prepare_final_response, export_answer_to_markdown]
+    return [
+        prepare_retrieval_query,
+        prepare_final_response,
+        export_answer_to_markdown,
+        send_whatsapp_text_message,
+    ]
 
 
 async def load_mcp_tools() -> List[BaseTool]:

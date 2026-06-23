@@ -9,6 +9,7 @@ RAG chatbot built with LangChain, FAISS, OpenAI embeddings, and a LangGraph mult
 - Store semantic embeddings in a local FAISS index
 - Use a LangGraph workflow for query rewriting, MCP tool calls, retrieval, and response generation
 - Review generated answers before exporting approved responses
+- Connect the RAG agent to WhatsApp through a WhatsApp Cloud API MCP tool and webhook
 - Run through Streamlit or a terminal script
 
 ## Setup
@@ -54,13 +55,46 @@ python -m src.rag_chain
 
 ## MCP Tool Server
 
-The project includes a local MCP server with tools for query preparation, final response formatting, and approved answer export:
+The project includes a local MCP server with tools for query preparation, final response formatting, approved answer export, and WhatsApp Cloud API message sending:
 
 ```bash
 python -m src.mcp_server
 ```
 
 LangGraph loads these tools through `langchain-mcp-adapters` when available, with same-schema local fallbacks for restricted environments.
+
+## WhatsApp Access
+
+Streamlit is the full UI for uploading documents and rebuilding the FAISS index. WhatsApp is the lightweight chat channel for asking questions after the index is ready.
+
+Add these values to `.env` from your Meta WhatsApp Cloud API app:
+
+```bash
+WHATSAPP_ACCESS_TOKEN=...
+WHATSAPP_PHONE_NUMBER_ID=...
+WHATSAPP_VERIFY_TOKEN=...
+WHATSAPP_API_VERSION=v20.0
+```
+
+Run the webhook server:
+
+```bash
+uvicorn src.whatsapp_webhook:app --host 0.0.0.0 --port 8000
+```
+
+Expose it with a tunnel such as ngrok during development:
+
+```bash
+ngrok http 8000
+```
+
+Use the public URL as your Meta webhook callback:
+
+```text
+https://your-ngrok-domain/webhook/whatsapp
+```
+
+The webhook verifies Meta's challenge token on `GET /webhook/whatsapp`, receives user messages on `POST /webhook/whatsapp`, runs the LangGraph RAG workflow, and replies through the MCP-backed WhatsApp send tool.
 
 ## Evaluation
 
