@@ -3,5 +3,7 @@
 __pycache__/
 *.pyc
 index/
+data/*
+!data/.gitkeep
 .DS_Store
 .streamlit/

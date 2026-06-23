@@ -3,9 +3,10 @@ python-dotenv
 langchain
 langchain-community
 langchain-openai
-langchain-chroma
-chromadb
+langgraph
+faiss-cpu
 pypdf
 tiktoken
 ragas
 datasets
+langchain-text-splitters
