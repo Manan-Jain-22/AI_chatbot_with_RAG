@@ -7,15 +7,15 @@
 
 ## 60-Second Project Pitch
 
-I built a document-grounded chatbot that lets a user upload PDFs, text files, or Markdown files, indexes them with OpenAI embeddings in FAISS, and answers questions using retrieved context instead of relying only on the model's memory. LangChain handles the document loading, chunking, embeddings, vector store, and LLM calls. FAISS gives fast semantic similarity search over the document chunks. Streamlit provides the chat interface.
+I built a document-grounded chatbot that lets a user upload PDFs, text files, or Markdown files, indexes them with OpenAI embeddings in FAISS, and answers questions using retrieved context instead of relying only on the model's memory. LangChain handles the document loading, chunking, embeddings, vector store, and LLM calls. FAISS gives fast semantic similarity search over the document chunks. Streamlit provides the rich UI for uploading and indexing, while WhatsApp provides a quick chat channel for asking questions from a phone.
 
-The agentic part is built with LangGraph. I model the RAG flow as explicit graph nodes: rewrite the user question, prepare the retrieval query through an MCP tool, retrieve relevant chunks from FAISS, generate a grounded draft answer, and format the final answer through another MCP tool. I also added a human approval/export step in the UI so the model does not automatically write outputs without review.
+The agentic part is built with LangGraph. I model the RAG flow as explicit graph nodes: rewrite the user question, prepare the retrieval query through an MCP tool, retrieve relevant chunks from FAISS, generate a grounded draft answer, and format the final answer through another MCP tool. I also added an MCP-backed WhatsApp tool, so the same RAG agent can reply to WhatsApp messages through the Meta WhatsApp Cloud API.
 
 ## Architecture
 
 ```text
 User
-  -> Streamlit UI
+  -> Streamlit UI or WhatsApp webhook
   -> LangGraph workflow
       -> OpenAI LLM rewrites the query
       -> MCP tool prepares retrieval query
@@ -24,6 +24,7 @@ User
       -> MCP tool formats final answer
   -> User reviews answer
   -> Optional MCP-style export tool writes approved answer to Markdown
+  -> Optional MCP WhatsApp tool sends answer back to user
 ```
 
 ## Where Each Technology Is Used
@@ -71,8 +72,9 @@ MCP is used as the tool boundary. The project includes an MCP server in `src/mcp
 - preparing retrieval queries
 - formatting final responses
 - exporting approved answers
+- sending WhatsApp messages through Meta's WhatsApp Cloud API
 
-The graph can load these tools through `langchain-mcp-adapters` in `src/mcp_tools.py`. There are also same-schema local wrappers so the app can still run in restricted environments. The important design idea is that external capabilities are separated from LLM reasoning: the LLM decides or the graph routes, but tools perform deterministic actions.
+The graph can load these tools through `langchain-mcp-adapters` in `src/mcp_tools.py`. There are also same-schema local wrappers so the app can still run in restricted environments. The important design idea is that external capabilities are separated from LLM reasoning: the LLM decides or the graph routes, but tools perform deterministic actions. The WhatsApp tool is the clearest external integration because it calls Meta's WhatsApp Cloud API.
 
 **Streamlit**
 
@@ -84,6 +86,10 @@ Streamlit is the user-facing app. It supports:
 - answer review
 - approved answer export
 
+**WhatsApp**
+
+WhatsApp is the lightweight access channel. A Starlette webhook receives inbound WhatsApp messages, extracts the text, runs the RAG workflow, and sends the answer back through the WhatsApp MCP tool. Streamlit is still useful because it is better for document upload, index rebuilds, and inspection.
+
 ## Why This Is Agentic
 
 It is more than a single prompt call. The system maintains a controlled state and moves through a graph of actions:
@@ -93,13 +99,13 @@ It is more than a single prompt call. The system maintains a controlled state an
 3. retrieve knowledge from FAISS
 4. generate a draft answer
 5. call a tool to format the answer
-6. wait for human approval before export
+6. send the response through a WhatsApp tool or wait for human approval before export
 
 That is the agentic layer: tool use, stateful multi-step control flow, and a human-in-the-loop action boundary.
 
 ## Strong Interview Answer For MCP
 
-I used MCP to make tool access modular. Instead of baking every utility directly into the prompt or the LLM chain, I exposed deterministic capabilities as tools: retrieval-query preparation, response formatting, and approved answer export. LangGraph controls when those tools are called. This separation matters because it keeps LLM reasoning separate from side effects. For example, the model can draft an answer, but exporting is only triggered after user approval.
+I used MCP to make tool access modular. Instead of baking every utility directly into the prompt or the LLM chain, I exposed deterministic capabilities as tools: retrieval-query preparation, response formatting, approved answer export, and WhatsApp message sending. LangGraph controls when those tools are called. This separation matters because it keeps LLM reasoning separate from side effects. WhatsApp is a concrete external tool integration because the MCP tool sends responses through Meta's WhatsApp Cloud API.
 
 ## Common Questions
 
@@ -119,6 +125,14 @@ FAISS is fast, local, and simple for semantic similarity search. It is a strong 
 
 LangGraph gives explicit control flow and state. That makes it easier to add tool calls, conditional routing, retries, review steps, and export steps.
 
+**Why WhatsApp if Streamlit already exists?**
+
+Streamlit is better for admin workflows like uploading documents, rebuilding the index, and inspecting responses. WhatsApp is better for everyday access because users can ask quick questions from their phone. That shows the RAG backend is channel-agnostic: the same LangGraph workflow can serve multiple interfaces.
+
+**How is WhatsApp connected?**
+
+A Starlette webhook receives WhatsApp Cloud API events. It extracts inbound text messages, runs `answer_question`, then sends the answer back using an MCP-exposed WhatsApp send tool. The actual outbound message call goes to Meta's Graph API `/PHONE_NUMBER_ID/messages` endpoint with a Bearer token.
+
 **How do you prevent hallucinations?**
 
 The generation prompt tells the model to answer only from retrieved context and cite sources. FAISS supplies context, and the final answer includes source labels.
@@ -128,5 +142,5 @@ The generation prompt tells the model to answer only from retrieved context and 
 - add answer quality grading and retry retrieval if context is weak
 - add hybrid keyword plus vector search
 - add persistent chat history
-- add a real Google Docs MCP server for approved exports
+- add Google Docs MCP server for approved exports
 - deploy the app with authentication
