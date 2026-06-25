@@ -30,11 +30,10 @@ DEFAULT_TOP_K = int(os.getenv("DEFAULT_TOP_K", "4"))
 MAX_REWRITE_ATTEMPTS = int(os.getenv("MAX_REWRITE_ATTEMPTS", "1"))
 
 
-# WhatsApp Cloud API settings
-WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN")
-WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
-WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "rag-chatbot-verify-token")
-WHATSAPP_API_VERSION = os.getenv("WHATSAPP_API_VERSION", "v20.0")
+# Notion settings for optional MCP export
+NOTION_API_KEY = os.getenv("NOTION_API_KEY")
+NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
+NOTION_API_VERSION = os.getenv("NOTION_API_VERSION", "2022-06-28")
 
 
 def validate_openai_key() -> None:
@@ -48,21 +47,21 @@ def validate_openai_key() -> None:
         )
 
 
-def validate_whatsapp_config() -> None:
+def validate_notion_config() -> None:
     """
-    Checks whether WhatsApp Cloud API credentials exist.
+    Checks whether Notion export credentials exist.
     """
     missing = [
         name
         for name, value in {
-            "WHATSAPP_ACCESS_TOKEN": WHATSAPP_ACCESS_TOKEN,
-            "WHATSAPP_PHONE_NUMBER_ID": WHATSAPP_PHONE_NUMBER_ID,
+            "NOTION_API_KEY": NOTION_API_KEY,
+            "NOTION_DATABASE_ID": NOTION_DATABASE_ID,
         }.items()
         if not value
     ]
     if missing:
         raise ValueError(
-            "Missing WhatsApp configuration: "
+            "Missing Notion configuration: "
             + ", ".join(missing)
             + ". Add these values to your .env file."
         )

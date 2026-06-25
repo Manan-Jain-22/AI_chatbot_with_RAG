@@ -1,23 +1,24 @@
 from __future__ import annotations
 
-from typing import Annotated, List, Optional, TypedDict
+from typing import Annotated, List, TypedDict
 
 from langchain_core.documents import Document
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
 
 from src.config import CHAT_MODEL, DEFAULT_TOP_K, MAX_REWRITE_ATTEMPTS, validate_openai_key
-from src.mcp_tools import find_tool, get_agent_tools
+from src.course_topics import TOPIC_KEYWORDS, expand_query_with_topic_terms, infer_topic
 from src.vector_store import get_retriever
 
 
 class RAGState(TypedDict):
     question: str
+    query_topic: str
     rewritten_question: str
     documents: List[Document]
+    selected_documents: List[Document]
     answer: str
     attempts: int
     messages: Annotated[list, add_messages]
@@ -36,8 +37,14 @@ def format_documents(documents: List[Document]) -> str:
     for i, doc in enumerate(documents, start=1):
         source = doc.metadata.get("source", "unknown source")
         page = doc.metadata.get("page")
+        topic = doc.metadata.get("topic", "general")
+        section = doc.metadata.get("section_heading", "")
         page_label = f", page {page + 1}" if isinstance(page, int) else ""
-        formatted.append(f"[{i}] Source: {source}{page_label}\n{doc.page_content}")
+        section_label = f", section: {section}" if section else ""
+        formatted.append(
+            f"[{i}] Source: {source}{page_label}, topic: {topic}{section_label}\n"
+            f"{doc.page_content}"
+        )
     return "\n\n".join(formatted)
 
 
@@ -48,7 +55,10 @@ def collect_sources(documents: List[Document]) -> List[str]:
     for doc in documents:
         source = doc.metadata.get("source", "unknown source")
         page = doc.metadata.get("page")
-        label = f"{source} p.{page + 1}" if isinstance(page, int) else source
+        section = doc.metadata.get("section_heading", "")
+        page_part = f" p.{page + 1}" if isinstance(page, int) else ""
+        section_part = f" - {section}" if section else ""
+        label = f"{source}{page_part}{section_part}"
         if label not in seen:
             seen.add(label)
             sources.append(label)
@@ -56,63 +66,82 @@ def collect_sources(documents: List[Document]) -> List[str]:
     return sources
 
 
-def build_rag_graph(
-    top_k: int = DEFAULT_TOP_K,
-    tools: Optional[List[BaseTool]] = None,
-):
+def build_rag_graph(top_k: int = DEFAULT_TOP_K):
     """
     Build a LangGraph RAG workflow.
 
-    The graph performs query rewriting, optional tool execution, FAISS retrieval,
-    and grounded answer generation. The default tool is intentionally local and
-    deterministic; MCP-backed tools can be passed in by callers that expose them.
+    The graph performs query classification, query rewriting, FAISS retrieval,
+    context selection, and grounded answer generation.
     """
     llm = get_chat_model()
-    retriever = get_retriever(top_k=top_k)
-    available_tools = tools or get_agent_tools()
-    query_tool = find_tool(available_tools, "prepare_retrieval_query")
-    response_tool = find_tool(available_tools, "prepare_final_response")
+    retriever = get_retriever(top_k=top_k + 4)
 
-    def rewrite_query(state: RAGState) -> dict:
+    def classify_query(state: RAGState) -> dict:
+        topics = ", ".join(TOPIC_KEYWORDS)
         prompt = [
             SystemMessage(
                 content=(
-                    "Rewrite the user's question for semantic retrieval. Keep named "
-                    "entities, dates, and technical terms. Return only the rewritten query."
+                    "Classify the computational linear algebra topic for the question. "
+                    f"Choose one of: {topics}. Return only the topic name."
                 )
             ),
             HumanMessage(content=state["question"]),
         ]
         response = llm.invoke(prompt)
+        candidate = response.content.strip().lower()
+        topic = candidate if candidate in TOPIC_KEYWORDS else infer_topic(state["question"])
+        return {"query_topic": topic, "messages": [response]}
+
+    def rewrite_query(state: RAGState) -> dict:
+        prompt = [
+            SystemMessage(
+                content=(
+                    "Rewrite the student's computational linear algebra question for "
+                    "semantic retrieval. Expand vague wording into likely course terms. "
+                    "Do not answer the question. Return only the retrieval query."
+                )
+            ),
+            HumanMessage(
+                content=(
+                    f"Topic: {state['query_topic']}\n"
+                    f"Question: {state['question']}"
+                )
+            ),
+        ]
+        response = llm.invoke(prompt)
         rewritten = response.content.strip() or state["question"]
+        expanded = expand_query_with_topic_terms(rewritten, state["query_topic"])
         return {
-            "rewritten_question": rewritten,
+            "rewritten_question": expanded,
             "attempts": state.get("attempts", 0) + 1,
             "messages": [response],
         }
-
-    def prepare_query_with_mcp(state: RAGState) -> dict:
-        prepared_query = query_tool.invoke(
-            {
-                "question": state["question"],
-                "rewritten_question": state["rewritten_question"],
-            }
-        )
-        return {"rewritten_question": str(prepared_query)}
 
     def retrieve(state: RAGState) -> dict:
         query = state["rewritten_question"] or state["question"]
         documents = retriever.invoke(query)
         return {"documents": documents}
 
+    def select_context(state: RAGState) -> dict:
+        topic = state["query_topic"]
+        topic_matches = [
+            document
+            for document in state["documents"]
+            if document.metadata.get("topic") == topic
+        ]
+        selected = (topic_matches + state["documents"])[:top_k]
+        return {"selected_documents": selected}
+
     def generate_answer(state: RAGState) -> dict:
-        context = format_documents(state["documents"])
+        context = format_documents(state["selected_documents"])
         prompt = [
             SystemMessage(
                 content=(
-                    "You are a RAG assistant. Answer using only the provided context. "
+                    "You are a Computational Linear Algebra study assistant. "
+                    "Answer using only the provided course context. "
                     "If the answer is not in the context, say you do not know. "
-                    "Cite sources inline as [1], [2], etc. Keep the answer concise."
+                    "Explain which numerical method applies and why. "
+                    "Cite sources inline as [1], [2], etc."
                 )
             ),
             HumanMessage(
@@ -126,28 +155,19 @@ def build_rag_graph(
         response = llm.invoke(prompt)
         return {"answer": response.content, "messages": [response]}
 
-    def format_answer_with_mcp(state: RAGState) -> dict:
-        formatted_answer = response_tool.invoke(
-            {
-                "answer": state["answer"],
-                "sources": ", ".join(collect_sources(state["documents"])),
-            }
-        )
-        return {"answer": str(formatted_answer)}
-
     graph = StateGraph(RAGState)
+    graph.add_node("classify_query", classify_query)
     graph.add_node("rewrite_query", rewrite_query)
-    graph.add_node("prepare_query_with_mcp", prepare_query_with_mcp)
     graph.add_node("retrieve", retrieve)
+    graph.add_node("select_context", select_context)
     graph.add_node("generate_answer", generate_answer)
-    graph.add_node("format_answer_with_mcp", format_answer_with_mcp)
 
-    graph.set_entry_point("rewrite_query")
-    graph.add_edge("rewrite_query", "prepare_query_with_mcp")
-    graph.add_edge("prepare_query_with_mcp", "retrieve")
-    graph.add_edge("retrieve", "generate_answer")
-    graph.add_edge("generate_answer", "format_answer_with_mcp")
-    graph.add_edge("format_answer_with_mcp", END)
+    graph.set_entry_point("classify_query")
+    graph.add_edge("classify_query", "rewrite_query")
+    graph.add_edge("rewrite_query", "retrieve")
+    graph.add_edge("retrieve", "select_context")
+    graph.add_edge("select_context", "generate_answer")
+    graph.add_edge("generate_answer", END)
     return graph.compile()
 
 
@@ -160,8 +180,10 @@ def answer_question(question: str, top_k: int = DEFAULT_TOP_K) -> dict:
     result = graph.invoke(
         {
             "question": question.strip(),
+            "query_topic": "",
             "rewritten_question": "",
             "documents": [],
+            "selected_documents": [],
             "answer": "",
             "attempts": 0,
             "messages": [],
@@ -170,10 +192,11 @@ def answer_question(question: str, top_k: int = DEFAULT_TOP_K) -> dict:
     )
     return {
         "question": question,
+        "query_topic": result["query_topic"],
         "rewritten_question": result["rewritten_question"],
         "answer": result["answer"],
-        "sources": collect_sources(result["documents"]),
-        "documents": result["documents"],
+        "sources": collect_sources(result["selected_documents"]),
+        "documents": result["selected_documents"],
     }
 
 

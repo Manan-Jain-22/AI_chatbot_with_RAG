@@ -1,138 +1,138 @@
-# RAG Chatbot Interview Prep
+# Computational Linear Algebra RAG Interview Prep
 
 ## Resume Bullets
 
 - Built a RAG chatbot using LangChain and FAISS for semantic retrieval from 100+ documents, enabling contextual responses.
-- Designed LangGraph-based multi-step agent workflow with MCP tool access for query rewriting and response generation.
+- Designed LangGraph-based multi-step agent workflow with MCP tool access for query rewriting & response generation.
 
-## 60-Second Project Pitch
+## 60-Second Pitch
 
-I built a document-grounded chatbot that lets a user upload PDFs, text files, or Markdown files, indexes them with OpenAI embeddings in FAISS, and answers questions using retrieved context instead of relying only on the model's memory. LangChain handles the document loading, chunking, embeddings, vector store, and LLM calls. FAISS gives fast semantic similarity search over the document chunks. Streamlit provides the rich UI for uploading and indexing, while WhatsApp provides a quick chat channel for asking questions from a phone.
+I built a Computational Linear Algebra study assistant rather than a generic chatbot over PDFs. The motivation was that in computational math, students often do not just need to remember a formula; they need to identify which numerical method applies to a problem and why.
 
-The agentic part is built with LangGraph. I model the RAG flow as explicit graph nodes: rewrite the user question, prepare the retrieval query through an MCP tool, retrieve relevant chunks from FAISS, generate a grounded draft answer, and format the final answer through another MCP tool. I also added an MCP-backed WhatsApp tool, so the same RAG agent can reply to WhatsApp messages through the Meta WhatsApp Cloud API.
+The corpus comes from Computational Linear Algebra course material: lecture notes, formula sheets, solved examples, implementation notes, assignment review notes, and my own summaries. It covers direct methods for linear systems, sparse and banded systems, Jacobi, Gauss-Seidel, SOR, conjugate gradient, QR factorization, SVD, least squares, and eigenvalue methods.
+
+The system uses LangChain for loading and chunking documents, OpenAI embeddings for semantic representations, FAISS for vector search, LangGraph for the multi-step workflow, Streamlit for the UI, and MCP for controlled export after a useful answer is finalized.
 
 ## Architecture
 
 ```text
-User
-  -> Streamlit UI or WhatsApp webhook
-  -> LangGraph workflow
-      -> OpenAI LLM rewrites the query
-      -> MCP tool prepares retrieval query
-      -> FAISS retrieves document chunks
-      -> OpenAI LLM generates grounded answer
-      -> MCP tool formats final answer
-  -> User reviews answer
-  -> Optional MCP-style export tool writes approved answer to Markdown
-  -> Optional MCP WhatsApp tool sends answer back to user
+Course documents
+  -> LangChain loaders
+  -> topic and section metadata
+  -> section-aware chunking
+  -> OpenAI embeddings
+  -> FAISS vector index
+
+Student question
+  -> LangGraph query classification
+  -> LangGraph query rewriting
+  -> FAISS retrieval
+  -> context selection
+  -> grounded answer generation
+  -> optional MCP export to Notion study card
 ```
 
-## Where Each Technology Is Used
+## Why This Is Not Just Keyword Search
 
-**LangChain**
+A student might ask: "How do I solve an overdetermined system?"
 
-LangChain is the application framework around the RAG components. It provides:
+The relevant material could appear under:
 
-- `PyPDFLoader` and `TextLoader` for document ingestion
-- `RecursiveCharacterTextSplitter` for chunking
-- `OpenAIEmbeddings` for creating vectors
-- FAISS vector store integration
-- `ChatOpenAI` for answer generation
-- LangChain `Tool` abstractions used by the agent workflow
+- least squares
+- QR factorization
+- normal equations
+- orthogonal projection
+- SVD
 
-**FAISS**
+Keyword search can miss that connection. Embeddings help because they retrieve by meaning, not just exact words.
 
-FAISS is the vector database layer. Each document chunk is embedded into a numeric vector. At question time, the rewritten query is embedded and FAISS returns the most semantically similar chunks. This gives the LLM relevant context and reduces hallucination.
+## Document Processing
 
-**OpenAI**
+Each file becomes a LangChain `Document` with metadata:
 
-OpenAI is used in two places:
+- source file
+- page number when available
+- file type
+- inferred course topic
+- section heading
 
-- embeddings: converts document chunks and queries into vectors
-- chat model: rewrites questions and generates grounded answers
+The project uses section-aware chunking. This matters for math notes because formulas without headings and surrounding explanation are hard to retrieve and hard for the LLM to use correctly.
 
-**LangGraph**
+## FAISS And Retrieval
 
-LangGraph is used because the workflow has multiple controlled steps rather than one single chain. The graph currently routes through:
+Each chunk is embedded with OpenAI embeddings and stored in FAISS. At query time, the question is embedded with the same model, and FAISS returns the top-k semantically similar chunks.
+
+FAISS is a good fit because it is fast, local, and simple for a course-document assistant. If this became a multi-user production system, I would consider pgvector, Pinecone, Weaviate, or another hosted vector database.
+
+## LangGraph Workflow
+
+The graph is split into explicit steps:
 
 ```text
+classify_query
 rewrite_query
-prepare_query_with_mcp
 retrieve
+select_context
 generate_answer
-format_answer_with_mcp
 ```
 
-This makes the system easier to debug and extend. For example, I can add approval, export, grading, retry, or query expansion nodes without rewriting the whole app.
+The query classification node identifies the likely topic, such as least squares or iterative methods. The query rewriting node expands vague student wording into retrieval-friendly terms. For example, "How do I solve an overdetermined system?" can be rewritten with terms like least squares, QR factorization, normal equations, SVD, and overdetermined linear systems.
 
-**MCP**
+After retrieval, the context selection node prioritizes chunks matching the classified topic. The answer generation node is instructed to answer only from retrieved course context and cite sources.
 
-MCP is used as the tool boundary. The project includes an MCP server in `src/mcp_server.py` that exposes tools for:
+## MCP Usage
 
-- preparing retrieval queries
-- formatting final responses
-- exporting approved answers
-- sending WhatsApp messages through Meta's WhatsApp Cloud API
+I kept MCP separate from the core retrieval logic. FAISS handles retrieval. LangGraph handles workflow control. MCP handles controlled external export after the answer is finalized.
 
-The graph can load these tools through `langchain-mcp-adapters` in `src/mcp_tools.py`. There are also same-schema local wrappers so the app can still run in restricted environments. The important design idea is that external capabilities are separated from LLM reasoning: the LLM decides or the graph routes, but tools perform deterministic actions. The WhatsApp tool is the clearest external integration because it calls Meta's WhatsApp Cloud API.
+The MCP server exposes:
 
-**Streamlit**
+- `export_answer_to_markdown`
+- `save_study_card_to_notion`
 
-Streamlit is the user-facing app. It supports:
+The Notion tool saves a useful answer as a structured study card with:
 
-- document upload
-- FAISS index rebuild
-- chat interface
-- answer review
-- approved answer export
+- question
+- answer
+- topic
+- tags
+- source references
 
-**WhatsApp**
+This separation is important because exporting to Notion is a side effect. It should happen only after the user reviews and confirms the answer.
 
-WhatsApp is the lightweight access channel. A Starlette webhook receives inbound WhatsApp messages, extracts the text, runs the RAG workflow, and sends the answer back through the WhatsApp MCP tool. Streamlit is still useful because it is better for document upload, index rebuilds, and inspection.
+## Retrieval Evaluation
 
-## Why This Is Agentic
+I added a small golden evaluation set of representative student-style questions. Each row includes:
 
-It is more than a single prompt call. The system maintains a controlled state and moves through a graph of actions:
+- question
+- expected topic
+- expected section
+- expected source
+- key answer points
 
-1. understand and rewrite the user question
-2. call a tool to prepare the search query
-3. retrieve knowledge from FAISS
-4. generate a draft answer
-5. call a tool to format the answer
-6. send the response through a WhatsApp tool or wait for human approval before export
+The evaluation script measures precision@k and recall@k for retrieval. Recall matters because if the right course section is missing from the retrieved context, the LLM cannot answer reliably. Precision matters because too many loosely related chunks can confuse the model, especially for similar methods like Jacobi, Gauss-Seidel, SOR, and conjugate gradient.
 
-That is the agentic layer: tool use, stateful multi-step control flow, and a human-in-the-loop action boundary.
+## Strong Interview Answer
 
-## Strong Interview Answer For MCP
+The biggest thing I learned is that useful RAG is not just connecting an LLM to a vector database. The quality depends heavily on preprocessing, metadata, chunking, retrieval evaluation, and deciding when the model should answer from text versus when it should call a tool. In this project, I used FAISS for semantic retrieval, LangGraph for structured workflow, and MCP only for controlled external export after user confirmation.
 
-I used MCP to make tool access modular. Instead of baking every utility directly into the prompt or the LLM chain, I exposed deterministic capabilities as tools: retrieval-query preparation, response formatting, approved answer export, and WhatsApp message sending. LangGraph controls when those tools are called. This separation matters because it keeps LLM reasoning separate from side effects. WhatsApp is a concrete external tool integration because the MCP tool sends responses through Meta's WhatsApp Cloud API.
+## Likely Follow-Ups
 
-## Common Questions
+**Why section-aware chunking?**
 
-**Why not just ask the LLM directly?**
+Mathematical formulas need nearby explanations, assumptions, and headings. Section-aware chunking improves retrieval because a chunk carries more conceptual context.
 
-Because the LLM may not know the user's private documents and may hallucinate. RAG grounds answers in retrieved chunks from the uploaded documents.
+**Why query rewriting?**
 
-**Why chunk documents?**
+Students ask vague questions. Rewriting expands those questions into terms that appear in the course notes, improving recall.
 
-Full documents are too large and too broad for retrieval. Chunking makes each vector represent a focused piece of information. Overlap helps preserve context across boundaries.
+**Why classify the query before retrieval?**
 
-**Why FAISS?**
+Topic classification helps context selection. If the question is about least squares, retrieved chunks from QR/SVD may be useful, but unrelated eigenvalue chunks should be deprioritized.
 
-FAISS is fast, local, and simple for semantic similarity search. It is a strong fit for a project where I want local vector search without managing an external vector database service.
+**Why MCP for Notion export?**
 
-**Why LangGraph instead of a basic LangChain chain?**
-
-LangGraph gives explicit control flow and state. That makes it easier to add tool calls, conditional routing, retries, review steps, and export steps.
-
-**How do you prevent hallucinations?**
-
-The generation prompt tells the model to answer only from retrieved context and cite sources. FAISS supplies context, and the final answer includes source labels.
+Notion is an external side-effecting system. MCP gives a clean tool boundary so the graph can keep retrieval and reasoning separate from external writes.
 
 **What would you improve next?**
 
-- add answer quality grading and retry retrieval if context is weak
-- add hybrid keyword plus vector search
-- add persistent chat history
-- add a Google Docs MCP server for approved exports
-- deploy the app with authentication
+I would add deterministic Python/NumPy tool use for numerical verification. For example, if a user provides a matrix and asks whether Cholesky is appropriate, the assistant could retrieve the concept from the notes and then call a Python tool to check symmetry and positive definiteness.

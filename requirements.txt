@@ -8,8 +8,6 @@ langchain-mcp-adapters
 mcp
 faiss-cpu
 httpx
-starlette
-uvicorn
 pypdf
 tiktoken
 ragas

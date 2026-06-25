@@ -1,16 +1,17 @@
-# AI RAG Chatbot
+# Computational Linear Algebra RAG Study Assistant
 
-RAG chatbot built with LangChain, FAISS, OpenAI embeddings, and a LangGraph multi-step workflow. It loads documents, chunks them for semantic search, persists a FAISS index, rewrites questions, retrieves relevant context, and generates cited answers.
+RAG study assistant built with LangChain, OpenAI, FAISS, Streamlit, LangGraph, and MCP. The app is focused on Computational Linear Algebra course material rather than generic PDFs. It retrieves conceptually relevant notes for questions about direct methods, sparse systems, Jacobi, Gauss-Seidel, SOR, conjugate gradient, QR, SVD, least squares, and eigenvalue methods.
 
 ## Features
 
-- Load `.pdf`, `.txt`, and `.md` files from `data/`
-- Split 100+ documents into retrieval-friendly chunks
-- Store semantic embeddings in a local FAISS index
-- Use a LangGraph workflow for query rewriting, MCP tool calls, retrieval, and response generation
-- Review generated answers before exporting approved responses
-- Connect the RAG agent to WhatsApp through a WhatsApp Cloud API MCP tool and webhook
-- Run through Streamlit or a terminal script
+- Load `.pdf`, `.txt`, and `.md` Computational Linear Algebra notes from `data/`
+- Add metadata for source file, page, inferred topic, and section heading
+- Use section-aware chunking so formulas stay near their surrounding explanation
+- Store OpenAI embeddings in a local FAISS index for semantic retrieval
+- Use LangGraph for query classification, query rewriting, retrieval, context selection, and answer generation
+- Evaluate retrieval with a golden set using precision@k and recall@k
+- Export finalized answers as Markdown or Notion study cards through MCP tools
+- Use Streamlit for uploads, indexing, chat, review, and confirmed export
 
 ## Setup
 
@@ -23,9 +24,24 @@ cp .env.example .env
 
 Add your OpenAI API key to `.env`.
 
-## Add Documents
+For Notion export, create a Notion integration and a study-card database with these properties:
 
-Create a `data/` folder and add supported files:
+- `Question`: title
+- `Answer`: rich_text
+- `Topic`: select
+- `Tags`: multi_select
+- `Sources`: rich_text
+
+Then add:
+
+```bash
+NOTION_API_KEY=...
+NOTION_DATABASE_ID=...
+```
+
+## Add Course Documents
+
+Create a `data/` folder and add supported course files:
 
 ```bash
 mkdir -p data
@@ -41,7 +57,7 @@ python -m src.vector_store
 
 The index is saved to `index/faiss` by default.
 
-## Run The Chatbot
+## Run The Study Assistant
 
 ```bash
 streamlit run app/streamlit_app.py
@@ -53,60 +69,41 @@ You can also ask a question from the terminal:
 python -m src.rag_chain
 ```
 
+## LangGraph Workflow
+
+The graph separates the RAG workflow into explicit steps:
+
+```text
+classify_query
+-> rewrite_query
+-> retrieve
+-> select_context
+-> generate_answer
+```
+
+MCP is intentionally kept separate from retrieval. It is used after a response is finalized, for controlled external export to Markdown or Notion.
+
 ## MCP Tool Server
 
-The project includes a local MCP server with tools for query preparation, final response formatting, approved answer export, and WhatsApp Cloud API message sending:
+The project includes a local MCP server with export tools:
 
 ```bash
 python -m src.mcp_server
 ```
 
-LangGraph loads these tools through `langchain-mcp-adapters` when available, with same-schema local fallbacks for restricted environments.
+Tools:
 
-## WhatsApp Access
+- `export_answer_to_markdown`
+- `save_study_card_to_notion`
 
-Streamlit is the full UI for uploading documents and rebuilding the FAISS index. WhatsApp is the lightweight chat channel for asking questions after the index is ready.
+## Retrieval Evaluation
 
-Add these values to `.env` from your Meta WhatsApp Cloud API app:
+The golden set lives at `eval/golden_questions.csv` and includes representative student-style questions with expected topic/section labels.
 
-```bash
-WHATSAPP_ACCESS_TOKEN=...
-WHATSAPP_PHONE_NUMBER_ID=...
-WHATSAPP_VERIFY_TOKEN=...
-WHATSAPP_API_VERSION=v20.0
-```
-
-Run the webhook server:
-
-```bash
-uvicorn src.whatsapp_webhook:app --host 0.0.0.0 --port 8000
-```
-
-Expose it with a tunnel such as ngrok during development:
-
-```bash
-ngrok http 8000
-```
-
-Use the public URL as your Meta webhook callback:
-
-```text
-https://your-ngrok-domain/webhook/whatsapp
-```
-
-The webhook verifies Meta's challenge token on `GET /webhook/whatsapp`, receives user messages on `POST /webhook/whatsapp`, runs the LangGraph RAG workflow, and replies through the MCP-backed WhatsApp send tool.
-
-## Evaluation
-
-Create `eval/questions.csv`:
-
-```csv
-question
-What is the main topic of the documents?
-```
-
-Then run:
+Run:
 
 ```bash
 python -m src.evaluation
 ```
+
+The script writes precision@k and recall@k results to `eval/results.csv`.

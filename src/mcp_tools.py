@@ -6,24 +6,8 @@ from typing import List
 
 from langchain_core.tools import BaseTool, tool
 
-from src.mcp_server import (
-    export_answer_to_markdown_impl,
-    prepare_final_response_impl,
-    prepare_retrieval_query_impl,
-)
-from src.whatsapp_client import send_whatsapp_text_message_impl
-
-
-@tool
-def prepare_retrieval_query(question: str, rewritten_question: str = "") -> str:
-    """Prepare a concise query for FAISS semantic retrieval."""
-    return prepare_retrieval_query_impl(question, rewritten_question or None)
-
-
-@tool
-def prepare_final_response(answer: str, sources: str = "") -> str:
-    """Format the draft RAG answer before returning it to the user."""
-    return prepare_final_response_impl(answer, sources)
+from src.mcp_server import export_answer_to_markdown_impl
+from src.notion_client import save_study_card_to_notion_impl
 
 
 @tool
@@ -38,13 +22,15 @@ def export_answer_to_markdown(
 
 
 @tool
-def send_whatsapp_text_message(
-    recipient_phone_number: str,
-    message: str,
-    preview_url: bool = False,
+def save_study_card_to_notion(
+    question: str,
+    answer: str,
+    topic: str = "general",
+    tags: list[str] | None = None,
+    sources: list[str] | None = None,
 ) -> dict:
-    """Send a text message through Meta WhatsApp Cloud API."""
-    return send_whatsapp_text_message_impl(recipient_phone_number, message, preview_url)
+    """Save a finalized answer as a structured Notion study card."""
+    return save_study_card_to_notion_impl(question, answer, topic, tags, sources)
 
 
 def get_local_mcp_compatible_tools() -> List[BaseTool]:
@@ -55,10 +41,8 @@ def get_local_mcp_compatible_tools() -> List[BaseTool]:
     server is not available, while the real MCP server remains in src.mcp_server.
     """
     return [
-        prepare_retrieval_query,
-        prepare_final_response,
         export_answer_to_markdown,
-        send_whatsapp_text_message,
+        save_study_card_to_notion,
     ]
 
 

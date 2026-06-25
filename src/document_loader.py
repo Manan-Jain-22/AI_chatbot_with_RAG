@@ -5,6 +5,7 @@ from langchain_core.documents import Document
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 
 from src.config import DATA_DIR
+from src.course_topics import infer_topic, infer_topic_from_path
 
 
 SUPPORTED_EXTENSIONS = {".pdf", ".txt", ".md"}
@@ -40,9 +41,12 @@ def load_single_document(file_path: Path) -> List[Document]:
 
     # Add consistent metadata for citations and debugging
     for doc in documents:
+        path_topic = infer_topic_from_path(file_path)
+        content_topic = infer_topic(doc.page_content[:2000], fallback=path_topic)
         doc.metadata["source"] = file_path.name
         doc.metadata["file_path"] = str(file_path)
         doc.metadata["file_type"] = extension
+        doc.metadata["topic"] = content_topic
 
     return documents
 

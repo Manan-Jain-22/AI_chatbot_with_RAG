@@ -9,14 +9,18 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.config import DATA_DIR, DEFAULT_TOP_K, FAISS_INDEX_DIR
 from src.document_loader import SUPPORTED_EXTENSIONS
-from src.mcp_tools import export_answer_to_markdown
+from src.mcp_tools import export_answer_to_markdown, save_study_card_to_notion
 from src.rag_chain import answer_question
 from src.vector_store import build_faiss_index, index_exists
 
 
-st.set_page_config(page_title="RAG Chatbot", page_icon="AI", layout="wide")
+st.set_page_config(
+    page_title="Computational Linear Algebra Study Assistant",
+    page_icon="AI",
+    layout="wide",
+)
 
-st.title("RAG Chatbot")
+st.title("Computational Linear Algebra Study Assistant")
 
 with st.sidebar:
     st.header("Knowledge Base")
@@ -103,6 +107,7 @@ if question:
                         "question": question,
                         "answer": result["answer"],
                         "sources": result["sources"],
+                        "topic": result.get("query_topic", "general"),
                     }
                 except Exception as exc:
                     st.error(str(exc))
@@ -129,5 +134,21 @@ if st.session_state.pending_export:
             except Exception as exc:
                 st.error(str(exc))
     with col2:
-        if st.button("Keep Editing / Ask Follow-up"):
-            st.info("Ask a follow-up question or request changes in the chat box.")
+        if st.button("Save Study Card to Notion"):
+            try:
+                result = save_study_card_to_notion.invoke(
+                    {
+                        "question": st.session_state.pending_export["question"],
+                        "answer": st.session_state.pending_export["answer"],
+                        "topic": st.session_state.pending_export.get("topic", "general"),
+                        "tags": ["computational-linear-algebra", "rag-study-card"],
+                        "sources": st.session_state.pending_export["sources"],
+                    }
+                )
+                st.success(f"Saved Notion study card: {result.get('url', 'created')}")
+                st.session_state.pending_export = None
+            except Exception as exc:
+                st.error(str(exc))
+
+    if st.button("Keep Editing / Ask Follow-up"):
+        st.info("Ask a follow-up question or request changes in the chat box.")

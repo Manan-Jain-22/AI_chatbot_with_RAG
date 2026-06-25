@@ -1,0 +1,6 @@
+question,expected_topic,expected_section,expected_source,key_answer_points
+How do I solve an overdetermined system?,least squares,,,least squares; QR factorization; normal equations; SVD
+When should I use conjugate gradient?,conjugate gradient,,,symmetric positive definite; iterative method; Krylov subspace
+What is the difference between Jacobi and Gauss-Seidel?,iterative methods,,,iteration update order; convergence; spectral radius
+Why use QR instead of normal equations for least squares?,qr factorization,,,numerical stability; orthogonality; least squares
+When is Cholesky factorization appropriate?,direct methods,,,symmetric positive definite; triangular factor
