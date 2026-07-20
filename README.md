@@ -69,6 +69,19 @@ You can also ask a question from the terminal:
 python -m src.rag_chain
 ```
 
+## Vercel Demo Surface
+
+The repo also includes a lightweight Vercel-ready web/API surface:
+
+- `index.html`: static browser chat UI
+- `api/health.py`: serverless health endpoint
+- `api/chat.py`: serverless chat endpoint that calls the same LangGraph RAG backend
+- `vercel.json`: Vercel routing/function configuration
+
+Use Streamlit locally for document upload and FAISS index rebuilding. Vercel serverless functions are stateless, so a production Vercel deployment should either include a sanitized prebuilt FAISS index or move vectors to a hosted vector database.
+
+See `VERCEL_DEPLOYMENT.md` for deployment notes.
+
 ## LangGraph Workflow
 
 The graph separates the RAG workflow into explicit steps:
