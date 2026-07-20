@@ -1,6 +1,6 @@
 # Computational Linear Algebra RAG Study Assistant
 
-RAG study assistant built with LangChain, OpenAI, FAISS, Streamlit, LangGraph, and MCP. The app is focused on Computational Linear Algebra course material rather than generic PDFs. It retrieves conceptually relevant notes for questions about direct methods, sparse systems, Jacobi, Gauss-Seidel, SOR, conjugate gradient, QR, SVD, least squares, and eigenvalue methods.
+RAG study assistant built with LangChain, Gemini/OpenAI, FAISS, Streamlit, LangGraph, and MCP. The app is focused on Computational Linear Algebra course material rather than generic PDFs. It retrieves conceptually relevant notes for questions about direct methods, sparse systems, Jacobi, Gauss-Seidel, SOR, conjugate gradient, QR, SVD, least squares, and eigenvalue methods.
 
 ## Primary Application
 
@@ -23,7 +23,7 @@ vector index is moved to persistent hosted storage.
 - Load `.pdf`, `.txt`, and `.md` Computational Linear Algebra notes from `data/`
 - Add metadata for source file, page, inferred topic, and section heading
 - Use section-aware chunking so formulas stay near their surrounding explanation
-- Store OpenAI embeddings in a local FAISS index for semantic retrieval
+- Store provider embeddings in a local FAISS index for semantic retrieval
 - Use LangGraph for query classification, query rewriting, retrieval, context selection, and answer generation
 - Evaluate retrieval with a golden set using precision@k and recall@k
 - Export finalized answers as Markdown or Notion study cards through MCP tools
@@ -38,7 +38,23 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Add your OpenAI API key to `.env`.
+Gemini is the default live provider:
+
+```bash
+LLM_PROVIDER=gemini
+GOOGLE_API_KEY=...
+GEMINI_CHAT_MODEL=gemini-2.5-flash
+GEMINI_EMBEDDING_MODEL=models/gemini-embedding-001
+```
+
+OpenAI remains available only as an optional provider:
+
+```bash
+LLM_PROVIDER=openai
+OPENAI_API_KEY=...
+CHAT_MODEL=gpt-4o-mini
+EMBEDDING_MODEL=text-embedding-3-small
+```
 
 For Notion export, create a Notion integration and a study-card database with these properties:
 
@@ -107,15 +123,16 @@ PUBLIC_DEMO_MODE = "true"
 
 The repo includes `data/demo_computational_linear_algebra_notes.md`, so the
 hosted app has safe demo content. In public demo mode, the sidebar demo
-questions work without OpenAI API calls.
+questions work without external model API calls.
 
 For a private live RAG deployment, use:
 
 ```toml
 PUBLIC_DEMO_MODE = "false"
-OPENAI_API_KEY = "..."
-CHAT_MODEL = "gpt-4o-mini"
-EMBEDDING_MODEL = "text-embedding-3-small"
+LLM_PROVIDER = "gemini"
+GOOGLE_API_KEY = "..."
+GEMINI_CHAT_MODEL = "gemini-2.5-flash"
+GEMINI_EMBEDDING_MODEL = "models/gemini-embedding-001"
 ```
 
 Then upload documents and click **Build / Rebuild Index**.

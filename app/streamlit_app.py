@@ -1,4 +1,3 @@
-import os
 import sys
 from pathlib import Path
 
@@ -18,21 +17,6 @@ from src.vector_store import build_faiss_index, index_exists
 
 PUBLIC_DEMO_MODE = getattr(app_config, "PUBLIC_DEMO_MODE", False)
 
-
-def configure_session_openai_key() -> bool:
-    """Allow private hosted testing without committing or permanently storing a key."""
-    if app_config.OPENAI_API_KEY:
-        os.environ["OPENAI_API_KEY"] = app_config.OPENAI_API_KEY
-        return True
-
-    session_key = st.session_state.get("session_openai_api_key", "").strip()
-    if session_key:
-        os.environ["OPENAI_API_KEY"] = session_key
-        app_config.OPENAI_API_KEY = session_key
-        return True
-
-    return False
-
 st.set_page_config(
     page_title="Computational Linear Algebra Study Assistant",
     page_icon="AI",
@@ -41,7 +25,7 @@ st.set_page_config(
 
 st.title("Computational Linear Algebra Study Assistant")
 st.caption(
-    "A hosted RAG application using LangChain, OpenAI embeddings, FAISS retrieval, "
+    "A hosted RAG application using LangChain, Gemini/OpenAI models, FAISS retrieval, "
     "LangGraph orchestration, and MCP export tools."
 )
 
@@ -130,11 +114,11 @@ def get_demo_result(question: str) -> dict:
             "answer": (
                 "This hosted portfolio demo is running in cost-safe mode, so it only "
                 "answers the curated demo questions in the sidebar. The full project "
-                "supports arbitrary uploaded documents and OpenAI-backed FAISS RAG when "
-                "`PUBLIC_DEMO_MODE` is disabled and an OpenAI key is configured."
+                "supports arbitrary uploaded documents and provider-backed FAISS RAG when "
+                "`PUBLIC_DEMO_MODE` is disabled and a live provider key is configured."
             ),
             "query_topic": "demo_mode",
-            "rewritten_question": "cost safe hosted portfolio demo without OpenAI API call",
+            "rewritten_question": "cost safe hosted portfolio demo without external model API calls",
             "sources": ["data/demo_computational_linear_algebra_notes.md"],
         }
 
@@ -160,17 +144,14 @@ with st.sidebar:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     if not PUBLIC_DEMO_MODE:
-        st.subheader("Private Test Key")
-        st.session_state.session_openai_api_key = st.text_input(
-            "OpenAI API key",
-            type="password",
-            placeholder="sk-...",
-            help="Optional session-only key for testing. Prefer Streamlit secrets for normal hosted use.",
-        )
-        if configure_session_openai_key():
-            st.success("OpenAI key detected for this session.")
+        provider = app_config.LLM_PROVIDER
+        st.caption(f"Live provider: {provider}")
+        if provider == "gemini" and app_config.GOOGLE_API_KEY:
+            st.success("Google Gemini key detected from configuration.")
+        elif provider == "openai" and app_config.OPENAI_API_KEY:
+            st.success("OpenAI key detected from configuration.")
         else:
-            st.warning("OpenAI key not detected. Add it in Streamlit secrets or paste it here.")
+            st.warning("Live provider key not detected in Streamlit secrets.")
 
     if PUBLIC_DEMO_MODE:
         st.caption("Uploads and index rebuilding are disabled in public demo mode.")
@@ -214,7 +195,6 @@ with st.sidebar:
         if st.button("Build / Rebuild Index", type="primary"):
             with st.spinner("Loading documents, chunking, embedding, and saving FAISS index..."):
                 try:
-                    configure_session_openai_key()
                     store = build_faiss_index()
                     st.success(f"Indexed {store.index.ntotal} chunks.")
                 except Exception as exc:
@@ -292,7 +272,6 @@ if question:
         else:
             with st.spinner("Retrieving context and generating an answer..."):
                 try:
-                    configure_session_openai_key()
                     result = answer_question(question, top_k=top_k)
                     st.markdown(result["answer"])
                     if result["sources"]:

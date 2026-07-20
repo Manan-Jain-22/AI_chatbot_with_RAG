@@ -2,17 +2,33 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 from langchain_core.documents import Document
-from langchain_openai import OpenAIEmbeddings
 
 from src.chunking import split_documents_into_chunks
-from src.config import EMBEDDING_MODEL, FAISS_INDEX_DIR, validate_openai_key
+from src.config import (
+    EMBEDDING_MODEL,
+    FAISS_INDEX_DIR,
+    GEMINI_EMBEDDING_MODEL,
+    LLM_PROVIDER,
+    validate_model_config,
+)
 from src.document_loader import load_documents_from_directory
 
 
-def get_embeddings() -> OpenAIEmbeddings:
+def get_embeddings():
     """Return the embedding model used for indexing and retrieval."""
-    validate_openai_key()
-    return OpenAIEmbeddings(model=EMBEDDING_MODEL)
+    validate_model_config()
+
+    if LLM_PROVIDER == "gemini":
+        from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
+        return GoogleGenerativeAIEmbeddings(model=GEMINI_EMBEDDING_MODEL)
+
+    if LLM_PROVIDER == "openai":
+        from langchain_openai import OpenAIEmbeddings
+
+        return OpenAIEmbeddings(model=EMBEDDING_MODEL)
+
+    raise ValueError(f"Unsupported LLM_PROVIDER: {LLM_PROVIDER}")
 
 
 def _import_faiss_vector_store():

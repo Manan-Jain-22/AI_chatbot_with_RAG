@@ -4,11 +4,17 @@ from typing import Annotated, List, TypedDict
 
 from langchain_core.documents import Document
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
 
-from src.config import CHAT_MODEL, DEFAULT_TOP_K, MAX_REWRITE_ATTEMPTS, validate_openai_key
+from src.config import (
+    CHAT_MODEL,
+    DEFAULT_TOP_K,
+    GEMINI_CHAT_MODEL,
+    LLM_PROVIDER,
+    MAX_REWRITE_ATTEMPTS,
+    validate_model_config,
+)
 from src.course_topics import TOPIC_KEYWORDS, expand_query_with_topic_terms, infer_topic
 from src.vector_store import get_retriever
 
@@ -24,9 +30,20 @@ class RAGState(TypedDict):
     messages: Annotated[list, add_messages]
 
 
-def get_chat_model(temperature: float = 0) -> ChatOpenAI:
-    validate_openai_key()
-    return ChatOpenAI(model=CHAT_MODEL, temperature=temperature)
+def get_chat_model(temperature: float = 0):
+    validate_model_config()
+
+    if LLM_PROVIDER == "gemini":
+        from langchain_google_genai import ChatGoogleGenerativeAI
+
+        return ChatGoogleGenerativeAI(model=GEMINI_CHAT_MODEL, temperature=temperature)
+
+    if LLM_PROVIDER == "openai":
+        from langchain_openai import ChatOpenAI
+
+        return ChatOpenAI(model=CHAT_MODEL, temperature=temperature)
+
+    raise ValueError(f"Unsupported LLM_PROVIDER: {LLM_PROVIDER}")
 
 
 def format_documents(documents: List[Document]) -> str:
