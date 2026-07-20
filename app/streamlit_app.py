@@ -7,12 +7,15 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import DATA_DIR, DEFAULT_TOP_K, FAISS_INDEX_DIR, PUBLIC_DEMO_MODE
+from src.config import DATA_DIR, DEFAULT_TOP_K, FAISS_INDEX_DIR
+import src.config as app_config
 from src.document_loader import SUPPORTED_EXTENSIONS
 from src.mcp_tools import export_answer_to_markdown, save_study_card_to_notion
 from src.rag_chain import answer_question
 from src.vector_store import build_faiss_index, index_exists
 
+
+PUBLIC_DEMO_MODE = getattr(app_config, "PUBLIC_DEMO_MODE", False)
 
 st.set_page_config(
     page_title="Computational Linear Algebra Study Assistant",
