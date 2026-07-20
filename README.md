@@ -2,6 +2,22 @@
 
 RAG study assistant built with LangChain, OpenAI, FAISS, Streamlit, LangGraph, and MCP. The app is focused on Computational Linear Algebra course material rather than generic PDFs. It retrieves conceptually relevant notes for questions about direct methods, sparse systems, Jacobi, Gauss-Seidel, SOR, conjugate gradient, QR, SVD, least squares, and eigenvalue methods.
 
+## Primary Application
+
+The single complete application is the Streamlit app in `app/streamlit_app.py`.
+It handles the full project workflow in one interface:
+
+1. upload course documents
+2. build or rebuild the FAISS vector index
+3. ask document-grounded questions
+4. review the generated answer
+5. export approved answers through MCP tools
+
+This is the version to demo in an interview because it shows the actual RAG
+pipeline end to end. The Vercel files are only a lightweight deployment surface
+for later experimentation; they do not replace the Streamlit app unless the
+vector index is moved to persistent hosted storage.
+
 ## Features
 
 - Load `.pdf`, `.txt`, and `.md` Computational Linear Algebra notes from `data/`
@@ -11,7 +27,7 @@ RAG study assistant built with LangChain, OpenAI, FAISS, Streamlit, LangGraph, a
 - Use LangGraph for query classification, query rewriting, retrieval, context selection, and answer generation
 - Evaluate retrieval with a golden set using precision@k and recall@k
 - Export finalized answers as Markdown or Notion study cards through MCP tools
-- Use Streamlit for uploads, indexing, chat, review, and confirmed export
+- Use Streamlit as the main application for uploads, indexing, chat, review, and confirmed export
 
 ## Setup
 
@@ -69,16 +85,19 @@ You can also ask a question from the terminal:
 python -m src.rag_chain
 ```
 
-## Vercel Demo Surface
+## Vercel Deployment Note
 
-The repo also includes a lightweight Vercel-ready web/API surface:
+This repo includes a lightweight Vercel-ready web/API surface:
 
 - `public/index.html`: Vercel static browser chat UI
 - `api/health.py`: serverless health endpoint
 - `api/chat.py`: serverless chat endpoint that calls the same LangGraph RAG backend
 - `vercel.json`: Vercel routing/function configuration
 
-Use Streamlit locally for document upload and FAISS index rebuilding. Vercel serverless functions are stateless, so a production Vercel deployment should either include a sanitized prebuilt FAISS index or move vectors to a hosted vector database.
+Use Streamlit for the full application. Vercel serverless functions are stateless,
+so a production Vercel deployment should either include a sanitized prebuilt
+FAISS index or move vectors to a hosted vector database such as Pinecone,
+Weaviate, or pgvector.
 
 See `VERCEL_DEPLOYMENT.md` for deployment notes.
 

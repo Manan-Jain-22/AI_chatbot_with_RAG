@@ -1,6 +1,10 @@
 # Vercel Deployment Notes
 
-Vercel can host the lightweight web/API demo in this repo:
+The complete project application is the Streamlit app. It is the app to demo
+because it supports document upload, FAISS index rebuilding, chat, answer
+review, and MCP export in one place.
+
+Vercel can host a lightweight web/API surface in this repo:
 
 - `public/index.html` is the browser UI.
 - `api/health.py` checks runtime status.
@@ -22,15 +26,23 @@ Install Command: pip install -r requirements-vercel.txt
 
 If Vercel auto-fills an output directory like `.vercel/output` or a build command for a frontend framework, clear it. This repo is a static HTML page plus Python serverless functions, not a Next.js project.
 
-## Important Limitation
+## Why Vercel Is Not The Main App Yet
 
-The Streamlit app is still the best interface for uploading course documents and rebuilding the FAISS index. Vercel functions are stateless serverless functions, so they are not a good place to accept user uploads and persist a FAISS index.
+Vercel serverless functions are stateless. They are not a good place to accept
+course document uploads, persist those files, and rebuild a FAISS index that
+should survive across user sessions.
 
-For a working Vercel demo, use one of these approaches:
+That is why this project currently has one complete app, Streamlit, and one
+optional Vercel deployment surface for later hosting work.
+
+For a production-style Vercel version, use one of these approaches:
 
 1. Build a sanitized FAISS index locally and deploy it with the project.
 2. Move vectors to a hosted database such as Pinecone, Weaviate, or pgvector.
 3. Keep Vercel as a frontend/API shell and host the RAG backend elsewhere.
+
+The cleanest future direction is option 2: keep the Vercel UI and Python API,
+but replace local FAISS persistence with a hosted vector database.
 
 ## Local Pre-Deployment Check
 
@@ -39,7 +51,7 @@ python -m compileall src app api
 python -m src.vector_store
 ```
 
-Then run the Streamlit app locally:
+Then run the complete Streamlit application:
 
 ```bash
 streamlit run app/streamlit_app.py
