@@ -73,7 +73,7 @@ python -m src.rag_chain
 
 The repo also includes a lightweight Vercel-ready web/API surface:
 
-- `index.html`: static browser chat UI
+- `public/index.html`: Vercel static browser chat UI
 - `api/health.py`: serverless health endpoint
 - `api/chat.py`: serverless chat endpoint that calls the same LangGraph RAG backend
 - `vercel.json`: Vercel routing/function configuration

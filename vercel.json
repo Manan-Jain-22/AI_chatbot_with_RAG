@@ -1,10 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pip install -r requirements-vercel.txt",
+  "buildCommand": "",
+  "outputDirectory": "public",
   "functions": {
     "api/**/*.py": {
       "excludeFiles": "{.venv/**,__pycache__/**,app/**,data/**,exports/**,eval/**,.git/**}"
     }
   },
+  "cleanUrls": true,
   "rewrites": [
     {
       "source": "/",

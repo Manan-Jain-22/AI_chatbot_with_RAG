@@ -2,11 +2,25 @@
 
 Vercel can host the lightweight web/API demo in this repo:
 
-- `index.html` is the browser UI.
+- `public/index.html` is the browser UI.
 - `api/health.py` checks runtime status.
 - `api/chat.py` calls the same LangGraph RAG pipeline used by Streamlit.
 
 Vercel's Python runtime supports ASGI/WSGI apps and Python serverless functions in files under `api/`. It also supports `BaseHTTPRequestHandler` functions, which is what this project uses for the minimal API.
+
+## Vercel Project Settings
+
+Use these settings in the Vercel dashboard:
+
+```text
+Framework Preset: Other
+Root Directory: ./
+Build Command: leave empty
+Output Directory: public
+Install Command: pip install -r requirements-vercel.txt
+```
+
+If Vercel auto-fills an output directory like `.vercel/output` or a build command for a frontend framework, clear it. This repo is a static HTML page plus Python serverless functions, not a Next.js project.
 
 ## Important Limitation
 
