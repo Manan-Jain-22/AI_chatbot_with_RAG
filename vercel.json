@@ -4,7 +4,7 @@
   "buildCommand": "",
   "outputDirectory": "public",
   "functions": {
-    "api/**/*.py": {
+    "api/*.py": {
       "excludeFiles": "{.venv/**,__pycache__/**,app/**,data/**,exports/**,eval/**,.git/**}"
     }
   },
