@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -16,6 +17,21 @@ from src.vector_store import build_faiss_index, index_exists
 
 
 PUBLIC_DEMO_MODE = getattr(app_config, "PUBLIC_DEMO_MODE", False)
+
+
+def configure_session_openai_key() -> bool:
+    """Allow private hosted testing without committing or permanently storing a key."""
+    if app_config.OPENAI_API_KEY:
+        os.environ["OPENAI_API_KEY"] = app_config.OPENAI_API_KEY
+        return True
+
+    session_key = st.session_state.get("session_openai_api_key", "").strip()
+    if session_key:
+        os.environ["OPENAI_API_KEY"] = session_key
+        app_config.OPENAI_API_KEY = session_key
+        return True
+
+    return False
 
 st.set_page_config(
     page_title="Computational Linear Algebra Study Assistant",
@@ -143,6 +159,19 @@ with st.sidebar:
     top_k = st.slider("Retrieved chunks", min_value=1, max_value=10, value=DEFAULT_TOP_K)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
+    if not PUBLIC_DEMO_MODE:
+        st.subheader("Private Test Key")
+        st.session_state.session_openai_api_key = st.text_input(
+            "OpenAI API key",
+            type="password",
+            placeholder="sk-...",
+            help="Optional session-only key for testing. Prefer Streamlit secrets for normal hosted use.",
+        )
+        if configure_session_openai_key():
+            st.success("OpenAI key detected for this session.")
+        else:
+            st.warning("OpenAI key not detected. Add it in Streamlit secrets or paste it here.")
+
     if PUBLIC_DEMO_MODE:
         st.caption("Uploads and index rebuilding are disabled in public demo mode.")
     else:
@@ -185,6 +214,7 @@ with st.sidebar:
         if st.button("Build / Rebuild Index", type="primary"):
             with st.spinner("Loading documents, chunking, embedding, and saving FAISS index..."):
                 try:
+                    configure_session_openai_key()
                     store = build_faiss_index()
                     st.success(f"Indexed {store.index.ntotal} chunks.")
                 except Exception as exc:
@@ -262,6 +292,7 @@ if question:
         else:
             with st.spinner("Retrieving context and generating an answer..."):
                 try:
+                    configure_session_openai_key()
                     result = answer_question(question, top_k=top_k)
                     st.markdown(result["answer"])
                     if result["sources"]:

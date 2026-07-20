@@ -66,7 +66,8 @@ def validate_openai_key() -> None:
     """
     if not OPENAI_API_KEY:
         raise ValueError(
-            "OPENAI_API_KEY is missing. Add it to your .env file before running the AI pipeline."
+            "OPENAI_API_KEY is missing. Add it to your local .env file, Streamlit "
+            "Cloud secrets, or the app sidebar before running the AI pipeline."
         )
 
 
