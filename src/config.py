@@ -28,6 +28,11 @@ def _get_setting(name: str, default: Optional[str] = None) -> Optional[str]:
         return default
 
 
+def _get_bool_setting(name: str, default: str = "false") -> bool:
+    value = _get_setting(name, default)
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
 # Main folders
 DATA_DIR = BASE_DIR / "data"
 INDEX_DIR = BASE_DIR / "index"
@@ -45,6 +50,7 @@ CHUNK_SIZE = int(_get_setting("CHUNK_SIZE", "1000"))
 CHUNK_OVERLAP = int(_get_setting("CHUNK_OVERLAP", "150"))
 DEFAULT_TOP_K = int(_get_setting("DEFAULT_TOP_K", "4"))
 MAX_REWRITE_ATTEMPTS = int(_get_setting("MAX_REWRITE_ATTEMPTS", "1"))
+PUBLIC_DEMO_MODE = _get_bool_setting("PUBLIC_DEMO_MODE", "false")
 
 
 # Notion settings for optional MCP export

@@ -27,11 +27,25 @@ storage.
 7. Add secrets.
 8. Deploy.
 
-## Required Secrets
+## Cost-Safe Public Demo Secrets
 
-Add these in the Streamlit Cloud app settings:
+For the public portfolio app, use this setting:
 
 ```toml
+PUBLIC_DEMO_MODE = "true"
+```
+
+In this mode, visitors can click the curated demo questions and see the RAG
+workflow explanation without triggering OpenAI embedding or chat calls. This is
+the safest setting for a public portfolio link.
+
+## Private Live RAG Secrets
+
+For your own testing with real document upload, FAISS embedding, and LLM answer
+generation, switch demo mode off and add your OpenAI key:
+
+```toml
+PUBLIC_DEMO_MODE = "false"
 OPENAI_API_KEY = "your-openai-api-key"
 CHAT_MODEL = "gpt-4o-mini"
 EMBEDDING_MODEL = "text-embedding-3-small"
@@ -51,13 +65,16 @@ Do not commit `.streamlit/secrets.toml`. It is intentionally ignored.
 
 1. Open the hosted Streamlit URL.
 2. Confirm the demo notes appear in the sidebar under `View documents`.
-3. Click `Build / Rebuild Index`.
-4. Ask one of the built-in demo questions:
+3. Ask one of the built-in demo questions:
    - `How should I solve an overdetermined system, and why is QR better than normal equations?`
    - `When should I use conjugate gradient instead of LU factorization?`
    - `What is the difference between Jacobi, Gauss-Seidel, and SOR?`
-5. Show the sources under the answer.
-6. Explain that MCP export is separated from retrieval because export is an
+4. Show the sources under the answer.
+5. Open `Agent Trace` to show query classification and retrieval rewriting.
+6. Explain that the live RAG mode uses OpenAI embeddings, FAISS, and LangGraph,
+   while the public portfolio mode is locked to curated examples to prevent
+   accidental API spending.
+7. Explain that MCP export is separated from retrieval because export is an
    external side effect and should happen only after review.
 
 ## Interview Positioning

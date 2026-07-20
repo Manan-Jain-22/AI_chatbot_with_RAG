@@ -99,17 +99,26 @@ Main file path: app/streamlit_app.py
 Python version: 3.11
 ```
 
-Add these secrets in Streamlit Cloud:
+For a cost-safe public portfolio demo, add this secret:
 
-```text
-OPENAI_API_KEY="..."
-CHAT_MODEL="gpt-4o-mini"
-EMBEDDING_MODEL="text-embedding-3-small"
+```toml
+PUBLIC_DEMO_MODE = "true"
 ```
 
 The repo includes `data/demo_computational_linear_algebra_notes.md`, so the
-hosted app has safe demo content. In the app, click **Build / Rebuild Index**
-once, then use the demo questions in the sidebar.
+hosted app has safe demo content. In public demo mode, the sidebar demo
+questions work without OpenAI API calls.
+
+For a private live RAG deployment, use:
+
+```toml
+PUBLIC_DEMO_MODE = "false"
+OPENAI_API_KEY = "..."
+CHAT_MODEL = "gpt-4o-mini"
+EMBEDDING_MODEL = "text-embedding-3-small"
+```
+
+Then upload documents and click **Build / Rebuild Index**.
 
 See `STREAMLIT_DEPLOYMENT.md` for the full hosted deployment checklist.
 
