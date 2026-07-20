@@ -152,6 +152,14 @@ with st.sidebar:
             st.success("OpenAI key detected from configuration.")
         else:
             st.warning("Live provider key not detected. Add GOOGLE_API_KEY or GEMINI_API_KEY in Streamlit secrets.")
+            with st.expander("Secrets Diagnostics"):
+                secret_names = app_config.get_visible_secret_names()
+                if secret_names:
+                    st.write("Detected secret names:")
+                    for secret_name in secret_names:
+                        st.code(secret_name)
+                else:
+                    st.write("No Streamlit secrets are visible to the app.")
 
     if PUBLIC_DEMO_MODE:
         st.caption("Uploads and index rebuilding are disabled in public demo mode.")

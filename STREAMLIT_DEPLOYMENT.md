@@ -49,9 +49,14 @@ PUBLIC_DEMO_MODE = "false"
 LLM_PROVIDER = "gemini"
 GOOGLE_API_KEY = "your-google-ai-studio-key"
 # GEMINI_API_KEY = "your-google-ai-studio-key" also works
+# GOOGLE_AI_API_KEY = "your-google-ai-studio-key" also works
 GEMINI_CHAT_MODEL = "gemini-2.5-flash"
 GEMINI_EMBEDDING_MODEL = "models/gemini-embedding-001"
 ```
+
+The key should be at the top level of Streamlit secrets. If the app still says
+the key is missing, open `Secrets Diagnostics` in the sidebar. It shows only the
+secret names visible to the app, never secret values.
 
 OpenAI remains available for local comparison if you set
 `LLM_PROVIDER = "openai"` and provide `OPENAI_API_KEY`, but the hosted portfolio

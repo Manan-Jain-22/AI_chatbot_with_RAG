@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from dotenv import load_dotenv
 
@@ -13,16 +13,53 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 
-def _get_setting(name: str, default: Optional[str] = None) -> Optional[str]:
-    """Read config from Streamlit secrets first, then environment variables."""
+def _read_streamlit_secret(name: str) -> Optional[str]:
+    """Read Streamlit secrets from top-level or common nested sections."""
     try:
         import streamlit as st
 
-        secret_value = st.secrets.get(name)
-        if secret_value:
-            return str(secret_value)
+        candidates = {name, name.lower(), name.upper()}
+
+        for candidate in candidates:
+            value = st.secrets.get(candidate)
+            if value:
+                return str(value).strip()
+
+        for section_name in ("general", "default", "secrets"):
+            section: Any = st.secrets.get(section_name)
+            if hasattr(section, "get"):
+                for candidate in candidates:
+                    value = section.get(candidate)
+                    if value:
+                        return str(value).strip()
     except Exception:
-        pass
+        return None
+
+    return None
+
+
+def get_visible_secret_names() -> list[str]:
+    """Return secret key names for diagnostics without exposing secret values."""
+    try:
+        import streamlit as st
+
+        names = []
+        for key, value in st.secrets.items():
+            if hasattr(value, "keys"):
+                names.append(f"[{key}]")
+                names.extend(f"{key}.{nested_key}" for nested_key in value.keys())
+            else:
+                names.append(str(key))
+        return sorted(names)
+    except Exception:
+        return []
+
+
+def _get_setting(name: str, default: Optional[str] = None) -> Optional[str]:
+    """Read config from Streamlit secrets first, then environment variables."""
+    secret_value = _read_streamlit_secret(name)
+    if secret_value:
+        return secret_value
 
     value = os.getenv(name)
     return value if value else default
@@ -47,7 +84,11 @@ EMBEDDING_MODEL = _get_setting("EMBEDDING_MODEL", "text-embedding-3-small")
 
 
 # Gemini settings
-GOOGLE_API_KEY = _get_setting("GOOGLE_API_KEY") or _get_setting("GEMINI_API_KEY")
+GOOGLE_API_KEY = (
+    _get_setting("GOOGLE_API_KEY")
+    or _get_setting("GEMINI_API_KEY")
+    or _get_setting("GOOGLE_AI_API_KEY")
+)
 GEMINI_CHAT_MODEL = _get_setting("GEMINI_CHAT_MODEL", "gemini-2.5-flash")
 GEMINI_EMBEDDING_MODEL = _get_setting("GEMINI_EMBEDDING_MODEL", "models/gemini-embedding-001")
 
