@@ -70,6 +70,20 @@ def _get_bool_setting(name: str, default: str = "false") -> bool:
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _normalize_gemini_chat_model(model: Optional[str]) -> str:
+    """Map older Gemini model names to a currently available chat model."""
+    if not model:
+        return "gemini-3.5-flash"
+
+    normalized = model.removeprefix("models/")
+    replacements = {
+        "gemini-2.5-flash": "gemini-3.5-flash",
+        "gemini-2.0-flash": "gemini-3.5-flash",
+        "gemini-1.5-flash": "gemini-3.5-flash",
+    }
+    return replacements.get(normalized, normalized)
+
+
 # Main folders
 DATA_DIR = BASE_DIR / "data"
 INDEX_DIR = BASE_DIR / "index"
@@ -89,7 +103,9 @@ GOOGLE_API_KEY = (
     or _get_setting("GEMINI_API_KEY")
     or _get_setting("GOOGLE_AI_API_KEY")
 )
-GEMINI_CHAT_MODEL = _get_setting("GEMINI_CHAT_MODEL", "gemini-2.5-flash")
+GEMINI_CHAT_MODEL = _normalize_gemini_chat_model(
+    _get_setting("GEMINI_CHAT_MODEL", "gemini-3.5-flash")
+)
 GEMINI_EMBEDDING_MODEL = _get_setting("GEMINI_EMBEDDING_MODEL", "models/gemini-embedding-001")
 
 
