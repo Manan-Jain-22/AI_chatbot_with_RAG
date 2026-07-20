@@ -6,5 +6,6 @@ index/
 exports/
 data/*
 !data/.gitkeep
+!data/demo_computational_linear_algebra_notes.md
 .DS_Store
-.streamlit/
+.streamlit/secrets.toml

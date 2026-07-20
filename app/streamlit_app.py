@@ -21,6 +21,18 @@ st.set_page_config(
 )
 
 st.title("Computational Linear Algebra Study Assistant")
+st.caption(
+    "A hosted RAG application using LangChain, OpenAI embeddings, FAISS retrieval, "
+    "LangGraph orchestration, and MCP export tools."
+)
+
+DEMO_QUESTIONS = [
+    "How should I solve an overdetermined system, and why is QR better than normal equations?",
+    "When should I use conjugate gradient instead of LU factorization?",
+    "What is the difference between Jacobi, Gauss-Seidel, and SOR?",
+    "Why are sparse and banded solvers useful for large linear systems?",
+    "How does SVD help with ill-conditioned least squares problems?",
+]
 
 with st.sidebar:
     st.header("Knowledge Base")
@@ -68,18 +80,44 @@ with st.sidebar:
             except Exception as exc:
                 st.error(str(exc))
 
+    st.divider()
+    st.header("Demo Questions")
+    st.caption("Use these to quickly show semantic retrieval and topic-aware query rewriting.")
+    for demo_question in DEMO_QUESTIONS:
+        if st.button(demo_question, use_container_width=True):
+            st.session_state.selected_demo_question = demo_question
+
+    with st.expander("Agent Workflow"):
+        st.write("1. Classify the query topic")
+        st.write("2. Rewrite the question with course-specific terms")
+        st.write("3. Retrieve semantic matches from FAISS")
+        st.write("4. Select the best context")
+        st.write("5. Generate a grounded answer")
+        st.write("6. Export only after user approval")
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "pending_export" not in st.session_state:
     st.session_state.pending_export = None
+if "selected_demo_question" not in st.session_state:
+    st.session_state.selected_demo_question = None
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
         if message.get("sources"):
             st.caption("Sources: " + ", ".join(message["sources"]))
+        if message.get("query_topic") or message.get("rewritten_question"):
+            with st.expander("Agent Trace"):
+                if message.get("query_topic"):
+                    st.write(f"Classified topic: {message['query_topic']}")
+                if message.get("rewritten_question"):
+                    st.write(f"Retrieval query: {message['rewritten_question']}")
 
 question = st.chat_input("Ask a question about your documents")
+if st.session_state.selected_demo_question and not question:
+    question = st.session_state.selected_demo_question
+    st.session_state.selected_demo_question = None
 
 if question:
     st.session_state.messages.append({"role": "user", "content": question})
@@ -96,11 +134,16 @@ if question:
                     st.markdown(result["answer"])
                     if result["sources"]:
                         st.caption("Sources: " + ", ".join(result["sources"]))
+                    with st.expander("Agent Trace"):
+                        st.write(f"Classified topic: {result['query_topic']}")
+                        st.write(f"Retrieval query: {result['rewritten_question']}")
                     st.session_state.messages.append(
                         {
                             "role": "assistant",
                             "content": result["answer"],
                             "sources": result["sources"],
+                            "query_topic": result["query_topic"],
+                            "rewritten_question": result["rewritten_question"],
                         }
                     )
                     st.session_state.pending_export = {

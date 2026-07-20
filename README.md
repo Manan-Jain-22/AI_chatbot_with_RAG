@@ -85,6 +85,34 @@ You can also ask a question from the terminal:
 python -m src.rag_chain
 ```
 
+## Hosted Portfolio App
+
+The recommended hosted deployment is Streamlit Community Cloud because the
+complete application is a Streamlit app.
+
+Deployment settings:
+
+```text
+Repository: Manan-Jain-22/AI_chatbot_with_RAG
+Branch: main
+Main file path: app/streamlit_app.py
+Python version: 3.11
+```
+
+Add these secrets in Streamlit Cloud:
+
+```text
+OPENAI_API_KEY="..."
+CHAT_MODEL="gpt-4o-mini"
+EMBEDDING_MODEL="text-embedding-3-small"
+```
+
+The repo includes `data/demo_computational_linear_algebra_notes.md`, so the
+hosted app has safe demo content. In the app, click **Build / Rebuild Index**
+once, then use the demo questions in the sidebar.
+
+See `STREAMLIT_DEPLOYMENT.md` for the full hosted deployment checklist.
+
 ## Vercel Deployment Note
 
 This repo includes a lightweight Vercel-ready web/API surface:
