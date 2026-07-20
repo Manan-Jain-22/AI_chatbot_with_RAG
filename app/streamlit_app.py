@@ -138,6 +138,9 @@ if PUBLIC_DEMO_MODE:
         "portfolio app will not consume API credits."
     )
 
+if "last_index_message" not in st.session_state:
+    st.session_state.last_index_message = None
+
 with st.sidebar:
     st.header("Knowledge Base")
     top_k = st.slider("Retrieved chunks", min_value=1, max_value=10, value=DEFAULT_TOP_K)
@@ -195,6 +198,10 @@ with st.sidebar:
     if PUBLIC_DEMO_MODE:
         st.success("Cost-safe demo ready.")
     else:
+        if st.session_state.last_index_message:
+            st.success(st.session_state.last_index_message)
+            st.session_state.last_index_message = None
+
         if index_exists():
             st.success(f"FAISS index ready: {FAISS_INDEX_DIR}")
         else:
@@ -204,7 +211,8 @@ with st.sidebar:
             with st.spinner("Loading documents, chunking, embedding, and saving FAISS index..."):
                 try:
                     store = build_faiss_index()
-                    st.success(f"Indexed {store.index.ntotal} chunks.")
+                    st.session_state.last_index_message = f"Indexed {store.index.ntotal} chunks."
+                    st.rerun()
                 except Exception as exc:
                     st.error(str(exc))
 
