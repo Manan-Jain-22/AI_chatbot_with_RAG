@@ -43,6 +43,7 @@ Gemini is the default live provider:
 ```bash
 LLM_PROVIDER=gemini
 GOOGLE_API_KEY=...
+# GEMINI_API_KEY=... also works
 GEMINI_CHAT_MODEL=gemini-2.5-flash
 GEMINI_EMBEDDING_MODEL=models/gemini-embedding-001
 ```
@@ -131,6 +132,7 @@ For a private live RAG deployment, use:
 PUBLIC_DEMO_MODE = "false"
 LLM_PROVIDER = "gemini"
 GOOGLE_API_KEY = "..."
+# GEMINI_API_KEY = "..." also works
 GEMINI_CHAT_MODEL = "gemini-2.5-flash"
 GEMINI_EMBEDDING_MODEL = "models/gemini-embedding-001"
 ```

@@ -151,7 +151,7 @@ with st.sidebar:
         elif provider == "openai" and app_config.OPENAI_API_KEY:
             st.success("OpenAI key detected from configuration.")
         else:
-            st.warning("Live provider key not detected in Streamlit secrets.")
+            st.warning("Live provider key not detected. Add GOOGLE_API_KEY or GEMINI_API_KEY in Streamlit secrets.")
 
     if PUBLIC_DEMO_MODE:
         st.caption("Uploads and index rebuilding are disabled in public demo mode.")

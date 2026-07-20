@@ -11,6 +11,7 @@ from src.config import (
     CHAT_MODEL,
     DEFAULT_TOP_K,
     GEMINI_CHAT_MODEL,
+    GOOGLE_API_KEY,
     LLM_PROVIDER,
     MAX_REWRITE_ATTEMPTS,
     validate_model_config,
@@ -36,7 +37,11 @@ def get_chat_model(temperature: float = 0):
     if LLM_PROVIDER == "gemini":
         from langchain_google_genai import ChatGoogleGenerativeAI
 
-        return ChatGoogleGenerativeAI(model=GEMINI_CHAT_MODEL, temperature=temperature)
+        return ChatGoogleGenerativeAI(
+            model=GEMINI_CHAT_MODEL,
+            temperature=temperature,
+            google_api_key=GOOGLE_API_KEY,
+        )
 
     if LLM_PROVIDER == "openai":
         from langchain_openai import ChatOpenAI

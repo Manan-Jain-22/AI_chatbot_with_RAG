@@ -47,7 +47,7 @@ EMBEDDING_MODEL = _get_setting("EMBEDDING_MODEL", "text-embedding-3-small")
 
 
 # Gemini settings
-GOOGLE_API_KEY = _get_setting("GOOGLE_API_KEY")
+GOOGLE_API_KEY = _get_setting("GOOGLE_API_KEY") or _get_setting("GEMINI_API_KEY")
 GEMINI_CHAT_MODEL = _get_setting("GEMINI_CHAT_MODEL", "gemini-2.5-flash")
 GEMINI_EMBEDDING_MODEL = _get_setting("GEMINI_EMBEDDING_MODEL", "models/gemini-embedding-001")
 
@@ -87,8 +87,8 @@ def validate_model_config() -> None:
     if LLM_PROVIDER == "gemini":
         if not GOOGLE_API_KEY:
             raise ValueError(
-                "GOOGLE_API_KEY is missing. Add it to Streamlit Cloud secrets or "
-                "your local .env file before running live Gemini RAG."
+                "Gemini API key is missing. Add GOOGLE_API_KEY or GEMINI_API_KEY "
+                "to Streamlit Cloud secrets before running live Gemini RAG."
             )
         return
 

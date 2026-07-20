@@ -7,6 +7,7 @@ from src.chunking import split_documents_into_chunks
 from src.config import (
     EMBEDDING_MODEL,
     FAISS_INDEX_DIR,
+    GOOGLE_API_KEY,
     GEMINI_EMBEDDING_MODEL,
     LLM_PROVIDER,
     validate_model_config,
@@ -21,7 +22,10 @@ def get_embeddings():
     if LLM_PROVIDER == "gemini":
         from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
-        return GoogleGenerativeAIEmbeddings(model=GEMINI_EMBEDDING_MODEL)
+        return GoogleGenerativeAIEmbeddings(
+            model=GEMINI_EMBEDDING_MODEL,
+            google_api_key=GOOGLE_API_KEY,
+        )
 
     if LLM_PROVIDER == "openai":
         from langchain_openai import OpenAIEmbeddings

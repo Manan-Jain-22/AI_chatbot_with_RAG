@@ -48,6 +48,7 @@ generation, switch demo mode off and add a Google AI Studio Gemini key:
 PUBLIC_DEMO_MODE = "false"
 LLM_PROVIDER = "gemini"
 GOOGLE_API_KEY = "your-google-ai-studio-key"
+# GEMINI_API_KEY = "your-google-ai-studio-key" also works
 GEMINI_CHAT_MODEL = "gemini-2.5-flash"
 GEMINI_EMBEDDING_MODEL = "models/gemini-embedding-001"
 ```
