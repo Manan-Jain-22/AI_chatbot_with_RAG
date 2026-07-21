@@ -126,8 +126,8 @@ PUBLIC_DEMO_MODE = "true"
 ```
 
 The repo includes `data/demo_computational_linear_algebra_notes.md`, so the
-hosted app has safe demo content. In public demo mode, the sidebar demo
-questions work without external model API calls.
+hosted app has safe demo content. In public demo mode, no external model API
+calls are made.
 
 For a private live RAG deployment, use:
 

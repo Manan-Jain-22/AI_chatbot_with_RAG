@@ -35,9 +35,8 @@ For the public portfolio app, use this setting:
 PUBLIC_DEMO_MODE = "true"
 ```
 
-In this mode, visitors can click the curated demo questions and see the RAG
-workflow explanation without triggering provider embedding or chat calls. This is
-the safest setting for a public portfolio link.
+In this mode, visitors can view the app without triggering provider embedding or
+chat calls. This is the safest setting for a public portfolio link.
 
 ## Private Live RAG Secrets
 
@@ -81,16 +80,12 @@ Do not commit `.streamlit/secrets.toml`. It is intentionally ignored.
 
 1. Open the hosted Streamlit URL.
 2. Confirm the demo notes appear in the sidebar under `View documents`.
-3. Ask one of the built-in demo questions:
-   - `How should I solve an overdetermined system, and why is QR better than normal equations?`
-   - `When should I use conjugate gradient instead of LU factorization?`
-   - `What is the difference between Jacobi, Gauss-Seidel, and SOR?`
-4. Show the sources under the answer.
-5. Open `Agent Trace` to show query classification and retrieval rewriting.
-6. Explain that the live RAG mode uses Gemini embeddings, FAISS, and LangGraph,
-   while the public portfolio mode is locked to curated examples to prevent
-   accidental API spending.
-7. Explain that MCP export is separated from retrieval because export is an
+3. Click `Build / Rebuild Index`.
+4. Ask a question such as `How should I solve an overdetermined system?`
+5. Show the sources under the answer.
+6. Open `Agent Trace` to show query classification and retrieval rewriting.
+7. Explain that the live RAG mode uses Gemini embeddings, FAISS, and LangGraph.
+8. Explain that MCP export is separated from retrieval because export is an
    external side effect and should happen only after review.
 
 ## Interview Positioning
