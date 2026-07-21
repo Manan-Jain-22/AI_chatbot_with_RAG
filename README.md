@@ -72,6 +72,9 @@ NOTION_API_KEY=...
 NOTION_DATABASE_ID=...
 ```
 
+In Streamlit Cloud, add the same values under app secrets. The Notion export
+button stays disabled until those connector credentials are configured.
+
 ## Add Course Documents
 
 Create a `data/` folder and add supported course files:

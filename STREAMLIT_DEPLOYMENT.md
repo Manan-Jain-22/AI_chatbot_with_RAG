@@ -70,6 +70,11 @@ NOTION_DATABASE_ID = "your-notion-database-id"
 NOTION_API_VERSION = "2022-06-28"
 ```
 
+The Notion button is intentionally disabled until both `NOTION_API_KEY` and
+`NOTION_DATABASE_ID` are present. That export is the project MCP-style external
+tool connector: the RAG answer is generated first, then a reviewed answer can be
+sent to Notion as a side effect.
+
 Do not commit `.streamlit/secrets.toml`. It is intentionally ignored.
 
 ## Portfolio Demo Flow

@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import re
 
 import streamlit as st
 
@@ -10,7 +11,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.config import DATA_DIR, DEFAULT_TOP_K, FAISS_INDEX_DIR
 import src.config as app_config
 from src.document_loader import SUPPORTED_EXTENSIONS
-from src.mcp_tools import export_answer_to_markdown, save_study_card_to_notion
+from src.mcp_tools import save_study_card_to_notion
 from src.rag_chain import answer_question
 from src.vector_store import build_faiss_index, index_exists
 
@@ -130,6 +131,21 @@ def get_demo_result(question: str) -> dict:
         "sources": ["data/demo_computational_linear_algebra_notes.md"],
         "documents": [],
     }
+
+
+def slugify_filename(text: str) -> str:
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", text.lower()).strip("-")
+    return f"{slug[:80] or 'rag-answer'}.md"
+
+
+def build_markdown_export(question: str, answer: str, sources: list[str]) -> str:
+    source_text = "\n".join(f"- {source}" for source in sources) if sources else "- No sources"
+    return (
+        "# RAG Study Assistant Answer\n\n"
+        f"## Question\n\n{question}\n\n"
+        f"## Answer\n\n{answer}\n\n"
+        f"## Sources\n\n{source_text}\n"
+    )
 
 
 if PUBLIC_DEMO_MODE:
@@ -315,27 +331,32 @@ if question:
 
 if st.session_state.pending_export:
     st.divider()
-    st.subheader("Review Answer")
-    st.markdown(st.session_state.pending_export["answer"])
+    st.subheader("Finalize Answer")
+    st.caption(
+        "The answer is shown once in the chat above. Approve it here to download "
+        "a Markdown copy or send it to the configured Notion MCP-style export."
+    )
     st.caption("Sources: " + ", ".join(st.session_state.pending_export["sources"]))
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Approve and Export"):
-            try:
-                exported_path = export_answer_to_markdown.invoke(
-                    {
-                        "question": st.session_state.pending_export["question"],
-                        "answer": st.session_state.pending_export["answer"],
-                        "sources": ", ".join(st.session_state.pending_export["sources"]),
-                    }
-                )
-                st.success(f"Exported approved answer to {exported_path}")
-                st.session_state.pending_export = None
-            except Exception as exc:
-                st.error(str(exc))
+        markdown_export = build_markdown_export(
+            st.session_state.pending_export["question"],
+            st.session_state.pending_export["answer"],
+            st.session_state.pending_export["sources"],
+        )
+        st.download_button(
+            "Approve and Download Markdown",
+            data=markdown_export,
+            file_name=slugify_filename(st.session_state.pending_export["question"]),
+            mime="text/markdown",
+        )
     with col2:
-        notion_disabled = PUBLIC_DEMO_MODE
+        notion_disabled = (
+            PUBLIC_DEMO_MODE
+            or not app_config.NOTION_API_KEY
+            or not app_config.NOTION_DATABASE_ID
+        )
         if st.button("Save Study Card to Notion", disabled=notion_disabled):
             try:
                 result = save_study_card_to_notion.invoke(
@@ -351,8 +372,13 @@ if st.session_state.pending_export:
                 st.session_state.pending_export = None
             except Exception as exc:
                 st.error(str(exc))
-        if notion_disabled:
+        if PUBLIC_DEMO_MODE:
             st.caption("Notion export is disabled in public demo mode.")
+        elif notion_disabled:
+            st.caption(
+                "Notion export needs NOTION_API_KEY and NOTION_DATABASE_ID in "
+                "Streamlit secrets. This is the MCP-style external tool connector."
+            )
 
     if st.button("Keep Editing / Ask Follow-up"):
         st.info("Ask a follow-up question or request changes in the chat box.")
