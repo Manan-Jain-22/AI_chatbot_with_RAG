@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, List, TypedDict
+from typing import Annotated, Any, List, TypedDict
 
 from langchain_core.documents import Document
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -49,6 +49,27 @@ def get_chat_model(temperature: float = 0):
         return ChatOpenAI(model=CHAT_MODEL, temperature=temperature)
 
     raise ValueError(f"Unsupported LLM_PROVIDER: {LLM_PROVIDER}")
+
+
+def message_content_to_text(content: Any) -> str:
+    """Normalize provider-specific message content into plain text."""
+    if isinstance(content, str):
+        return content
+
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                text = item.get("text") or item.get("content")
+                if text:
+                    parts.append(str(text))
+            else:
+                parts.append(str(item))
+        return "\n".join(parts)
+
+    return str(content)
 
 
 def format_documents(documents: List[Document]) -> str:
@@ -110,7 +131,7 @@ def build_rag_graph(top_k: int = DEFAULT_TOP_K):
             HumanMessage(content=state["question"]),
         ]
         response = llm.invoke(prompt)
-        candidate = response.content.strip().lower()
+        candidate = message_content_to_text(response.content).strip().lower()
         topic = candidate if candidate in TOPIC_KEYWORDS else infer_topic(state["question"])
         return {"query_topic": topic, "messages": [response]}
 
@@ -131,7 +152,7 @@ def build_rag_graph(top_k: int = DEFAULT_TOP_K):
             ),
         ]
         response = llm.invoke(prompt)
-        rewritten = response.content.strip() or state["question"]
+        rewritten = message_content_to_text(response.content).strip() or state["question"]
         expanded = expand_query_with_topic_terms(rewritten, state["query_topic"])
         return {
             "rewritten_question": expanded,
@@ -175,7 +196,7 @@ def build_rag_graph(top_k: int = DEFAULT_TOP_K):
             ),
         ]
         response = llm.invoke(prompt)
-        return {"answer": response.content, "messages": [response]}
+        return {"answer": message_content_to_text(response.content), "messages": [response]}
 
     graph = StateGraph(RAGState)
     graph.add_node("classify_query", classify_query)
